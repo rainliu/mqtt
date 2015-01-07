@@ -11,3 +11,15 @@ type ServerSession interface {
 }
 
 ////////////////////Implementation////////////////////////
+
+type serverSession struct {
+	session
+}
+
+func (this *serverSession) EnableRetransmissionAlerts() {
+
+}
+
+func (this *serverSession) Forward(message Message) {
+
+}

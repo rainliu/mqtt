@@ -21,44 +21,78 @@ var stackSingleton Stack
 
 func GetStack() Stack {
 	if stackSingleton == nil {
-		return &stack{}
+		return newStack()
 	} else {
 		return stackSingleton
 	}
 }
 
 type stack struct {
-	transports []Transport
-	providers  []Provider
+	transports map[Transport]*transport
+	providers  map[Provider]*provider
+}
+
+func newStack() Stack {
+	this := &stack{}
+
+	this.transports = make(map[Transport]*transport)
+	this.providers = make(map[Provider]*provider)
+
+	return this
 }
 
 func (this *stack) CreateTransport(network string, address string, port int) Transport {
-	return nil
+	t := newTransport(network, address, port)
+
+	this.transports[t] = t
+
+	return t
 }
 
 func (this *stack) GetTransports() []Transport {
-	return this.transports
+	transports := make([]Transport, len(this.transports))
+
+	l := 0
+	for _, value := range this.transports {
+		transports[l] = value
+		l++
+	}
+
+	return transports
 }
 
-func (this *stack) DeleteTransport(transport Transport) {
-
+func (this *stack) DeleteTransport(t Transport) {
+	delete(this.transports, t)
 }
 
-func (this *stack) CreateProvider(transport Transport) Provider {
-	return nil
+func (this *stack) CreateProvider(t Transport) Provider {
+	p := newProvider(t)
+
+	this.providers[p] = p
+
+	return p
 }
 
 func (this *stack) GetProviders() []Provider {
-	return this.providers
+	providers := make([]Provider, len(this.providers))
+
+	l := 0
+	for _, value := range this.providers {
+		providers[l] = value
+		l++
+	}
+
+	return providers
 }
 
-func (this *stack) DeleteProvider(provider Provider) {
-
+func (this *stack) DeleteProvider(p Provider) {
+	delete(this.providers, p)
 }
 
 func (this *stack) Run() {
-
+	//TODO
 }
-func (this *stack) Stop() {
 
+func (this *stack) Stop() {
+	//TODO
 }
