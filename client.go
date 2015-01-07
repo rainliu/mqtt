@@ -1,5 +1,7 @@
 package mqtt
 
+////////////////////Interface//////////////////////////////
+
 type ClientSession interface {
 	Session
 
@@ -8,3 +10,5 @@ type ClientSession interface {
 
 	Publish(message Message)
 }
+
+////////////////////Implementation////////////////////////

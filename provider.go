@@ -1,5 +1,7 @@
 package mqtt
 
+////////////////////Interface//////////////////////////////
+
 type Provider interface {
 	GetStack() Stack
 
@@ -19,3 +21,5 @@ type Provider interface {
 	GetServerSessions() []ServerSession
 	DeleteServerSession(serverSession ServerSession)
 }
+
+////////////////////Implementation////////////////////////

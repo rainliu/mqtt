@@ -1,5 +1,7 @@
 package mqtt
 
+////////////////////Interface//////////////////////////////
+
 type QOS_TYPE int
 
 const (
@@ -18,3 +20,5 @@ type Message interface {
 	GetContent() string
 	SetContent(content string)
 }
+
+////////////////////Implementation////////////////////////

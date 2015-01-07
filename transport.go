@@ -1,5 +1,7 @@
 package mqtt
 
+////////////////////Interface//////////////////////////////
+
 const (
 	TCP  = "tcp"
 	WS   = "ws"
@@ -16,3 +18,5 @@ type Transport interface {
 	GetAddress() string
 	GetPort() int
 }
+
+////////////////////Implementation////////////////////////

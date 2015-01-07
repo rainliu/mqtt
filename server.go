@@ -1,5 +1,7 @@
 package mqtt
 
+////////////////////Interface//////////////////////////////
+
 type ServerSession interface {
 	Session
 
@@ -7,3 +9,5 @@ type ServerSession interface {
 
 	Forward(message Message)
 }
+
+////////////////////Implementation////////////////////////
