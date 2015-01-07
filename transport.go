@@ -1,5 +1,11 @@
 package mqtt
 
+import (
+	"errors"
+	"net"
+	"strconv"
+)
+
 ////////////////////Interface//////////////////////////////
 
 const (
@@ -22,22 +28,22 @@ type Transport interface {
 type ClientTransport interface {
 	Transport
 
-	Connect()
-	Disconnect()
+	Dial() (net.Conn, error)
 }
 
 type ServerTransport interface {
 	Transport
 
-	Listen()
-	Accept()
+	Listen() error
+	Accept() (net.Conn, error)
+	Close()
 }
 
 ////////////////////Implementation////////////////////////
 
 type transport struct {
 	network string
-	address string
+	address string //for server, it is laddr; for client, it is raddr
 	port    int
 }
 
@@ -58,19 +64,58 @@ func (this *transport) GetPort() int {
 }
 
 //Client Transport
-func (this *transport) Connect() {
-
+type clientTransport struct {
+	transport
 }
 
-func (this *transport) Disconnect() {
+func (this *clientTransport) Dial() (net.Conn, error) {
+	var conn net.Conn
+	var err error
 
+	switch this.network {
+	case TCP:
+		conn, err = net.Dial("tcp", net.JoinHostPort(this.address, strconv.Itoa(this.port)))
+	}
+
+	return conn, err
 }
 
 //Sever Transport
-func (this *transport) Listen() {
+type serverTransport struct {
+	transport
 
+	lner net.Listener
 }
 
-func (this *transport) Accept() {
+func (this *serverTransport) Listen() error {
+	var err error
 
+	switch this.network {
+	case TCP:
+		this.lner, err = net.Listen("tcp", net.JoinHostPort(this.address, strconv.Itoa(this.port)))
+	}
+
+	return err
+}
+
+func (this *serverTransport) Accept() (net.Conn, error) {
+	if this.lner != nil {
+		var conn net.Conn
+		var err error
+
+		switch this.network {
+		case TCP:
+			conn, err = this.lner.Accept()
+		}
+
+		return conn, err
+	} else {
+		return nil, errors.New("Listen() must be called first or Listener is nil\n")
+	}
+}
+
+func (this *serverTransport) Close() {
+	if this.lner != nil {
+		this.lner.Close()
+	}
 }

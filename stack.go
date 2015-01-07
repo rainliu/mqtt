@@ -5,11 +5,11 @@ package mqtt
 type Stack interface {
 	CreateTransport(network string, address string, port int) Transport
 	GetTransports() []Transport
-	DeleteTransport(transport Transport)
+	DeleteTransport(t Transport)
 
-	CreateProvider(transport Transport) Provider
+	CreateProvider() Provider
 	GetProviders() []Provider
-	DeleteProvider(provider Provider)
+	DeleteProvider(p Provider)
 
 	Run()
 	Stop()
@@ -65,8 +65,8 @@ func (this *stack) DeleteTransport(t Transport) {
 	delete(this.transports, t)
 }
 
-func (this *stack) CreateProvider(t Transport) Provider {
-	p := newProvider(t)
+func (this *stack) CreateProvider() Provider {
+	p := newProvider()
 
 	this.providers[p] = p
 

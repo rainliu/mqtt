@@ -2,17 +2,23 @@ package mqtt
 
 ////////////////////Interface//////////////////////////////
 
-type QOS_TYPE int
+type QOS int
 
 const (
-	QOS_0 QOS_TYPE = iota
-	QOS_1
-	QOS_2
+	QOS_ZERO QOS = iota
+	QOS_ONE
+	QOS_TWO
 )
 
 type Message interface {
-	GetQoS() QOS_TYPE
-	SetQos(qos QOS_TYPE)
+	GetDup() bool
+	SetDup(dup bool)
+
+	GetQos() QOS
+	SetQos(qos QOS)
+
+	GetRetain() bool
+	SetRetain(retain bool)
 
 	GetTopic() string
 	SetTopic(topic string)

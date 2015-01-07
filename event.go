@@ -8,8 +8,11 @@ const (
 	EVENT_PUBLISH EventType = iota
 	EVENT_SUBSCRIBE
 	EVENT_UNSUBSCRIBE
-	EVENT_TIMEOUT
+
+	EVENT_SESSION_CREATED
 	EVENT_SESSION_TERMINATED
+
+	EVENT_TIMEOUT
 	EVENT_IOEXCEPTION
 )
 
@@ -43,16 +46,22 @@ type UnsubscribeEvent interface {
 	GetTopics() []string
 }
 
-type TimeoutEvent interface {
+type SessionCreatedEvent interface {
 	Event
 
-	GetTimeout() Timeout
+	GetReason() string
 }
 
 type SessionTerminatedEvent interface {
 	Event
 
 	GetReason() string
+}
+
+type TimeoutEvent interface {
+	Event
+
+	GetTimeout() Timeout
 }
 
 type IOExceptionEvent interface {

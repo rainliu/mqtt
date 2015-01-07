@@ -1,77 +1,65 @@
 package mqtt
 
+import (
+	"log"
+	"net"
+)
+
 ////////////////////Interface//////////////////////////////
 
 type Provider interface {
-	AddTransport(transport Transport)
-	GetTransport(network string) Transport
-	GetTransports() []Transport
-	RemoveTransport(transport Transport)
+	AddServerTransport(st ServerTransport)
+	GetServerTransports() []ServerTransport
+	RemoveServerTransport(st ServerTransport)
 
 	AddListener(listener Listener)
 	RemoveListener(listener Listener)
 
-	CreateClientSession(clientTransport ClientTransport) ClientSession
+	CreateClientSession(ct ClientTransport) ClientSession
 	GetClientSessions() []ClientSession
-	DeleteClientSession(clientSession ClientSession)
+	DeleteClientSession(ct ClientSession)
 
-	CreateServerSession(serverTransport ServerTransport) ServerSession
-	GetServerSessions() []ServerSession
-	DeleteServerSession(serverSession ServerSession)
+	Forward(m Message)
 }
 
 ////////////////////Implementation////////////////////////
 
 type provider struct {
-	transports map[Transport]Transport
-	listeners  map[Listener]Listener
-
-	clientSessions map[ClientSession]*clientSession
-	serverSessions map[ServerSession]*serverSession
+	listeners        map[Listener]Listener
+	serverTransports map[ServerTransport]ServerTransport
+	clientSessions   map[ClientSession]*clientSession
+	serverSessions   map[ServerSession]*serverSession
 }
 
-func newProvider(t Transport) *provider {
+func newProvider() *provider {
 	this := &provider{}
 
+	this.listeners = make(map[Listener]Listener)
+	this.serverTransports = make(map[ServerTransport]ServerTransport)
 	this.clientSessions = make(map[ClientSession]*clientSession)
 	this.serverSessions = make(map[ServerSession]*serverSession)
-
-	this.listeners = make(map[Listener]Listener)
-	this.transports = make(map[Transport]Transport)
-
-	this.transports[t] = t
 
 	return this
 }
 
-func (this *provider) AddTransport(t Transport) {
-	this.transports[t] = t
+func (this *provider) AddServerTransport(st ServerTransport) {
+	this.serverTransports[st] = st
 }
 
-func (this *provider) GetTransport(network string) Transport {
-	for _, t := range this.transports {
-		if t.GetNetwork() == network {
-			return t
-		}
-	}
-
-	return nil
-}
-
-func (this *provider) GetTransports() []Transport {
-	transports := make([]Transport, len(this.transports))
+func (this *provider) GetServerTransports() []ServerTransport {
+	serverTransports := make([]ServerTransport, len(this.serverTransports))
 
 	l := 0
-	for _, value := range this.transports {
-		transports[l] = value
+	for _, value := range this.serverTransports {
+		serverTransports[l] = value
 		l++
 	}
 
-	return transports
+	return serverTransports
 }
 
-func (this *provider) RemoveTransport(t Transport) {
-	delete(this.transports, t)
+func (this *provider) RemoveServerTransport(st ServerTransport) {
+	delete(this.serverTransports, st)
 }
 
 func (this *provider) AddListener(l Listener) {
@@ -102,26 +90,74 @@ func (this *provider) DeleteClientSession(c ClientSession) {
 	delete(this.clientSessions, c)
 }
 
-func (this *provider) CreateServerSession(st ServerTransport) ServerSession {
-	return nil
-}
-
-func (this *provider) GetServerSessions() []ServerSession {
-	serverSessions := make([]ServerSession, len(this.serverSessions))
-
-	l := 0
-	for _, value := range this.serverSessions {
-		serverSessions[l] = value
-		l++
+func (this *provider) Forward(m Message) {
+	for _, st := range this.serverSessions {
+		st.Forward(m)
 	}
-
-	return serverSessions
-}
-
-func (this *provider) DeleteServerSession(s ServerSession) {
-	delete(this.serverSessions, s)
 }
 
 func (this *provider) Run() {
+	for _, st := range this.serverTransports {
+		if err := st.Listen(); err != nil {
+			log.Printf("Listening %s//%s:%d Failed!\n", st.GetNetwork(), st.GetAddress(), st.GetPort())
+		} else {
+			log.Printf("Listening %s//%s:%d ...\n", st.GetNetwork(), st.GetAddress(), st.GetPort())
+			go this.ServeAccept(st)
+		}
+	}
+}
 
+func (this *provider) ServeAccept(st ServerTransport) {
+	//defer s.waitGroup.Done()
+	for {
+		// select {
+		// case <-s.ch:
+		// 	log.Println("stopping listening on", listener.Addr())
+		// 	listener.Close()
+		// 	return
+		// default:
+		// }
+		// listener.SetDeadline(time.Now().Add(1e9))
+		conn, err := st.Accept()
+		if err != nil {
+			continue
+			// if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
+			// 	continue
+			// }
+			// log.Println(err)
+		}
+		//s.waitGroup.Add(1)
+		go this.ServeConn(conn)
+	}
+}
+
+func (this *provider) ServeConn(conn net.Conn) {
+	defer conn.Close()
+
+	ss := newServerSession(conn)
+	this.serverSessions[ss] = ss
+	ss.Run()
+
+	//defer s.waitGroup.Done()
+	// for {
+	// 	// select {
+	// 	// case <-s.ch:
+	// 	// 	log.Println("disconnecting", conn.RemoteAddr())
+	// 	// 	return
+	// 	// default:
+	// 	// }
+	// 	// conn.SetDeadline(time.Now().Add(1e9))
+	// 	buf := make([]byte, 4096)
+	// 	if _, err := conn.Read(buf); nil != err {
+	// 		if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
+	// 			continue
+	// 		}
+	// 		log.Println(err)
+	// 		return
+	// 	}
+	// 	if _, err := conn.Write(buf); nil != err {
+	// 		log.Println(err)
+	// 		return
+	// 	}
+	// }
 }

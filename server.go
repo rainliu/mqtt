@@ -1,11 +1,11 @@
 package mqtt
 
+import "net"
+
 ////////////////////Interface//////////////////////////////
 
 type ServerSession interface {
 	Session
-
-	EnableRetransmissionAlerts()
 
 	Forward(message Message)
 }
@@ -14,12 +14,21 @@ type ServerSession interface {
 
 type serverSession struct {
 	session
+
+	conn net.Conn
 }
 
-func (this *serverSession) EnableRetransmissionAlerts() {
+func newServerSession(conn net.Conn) *serverSession {
+	this := &serverSession{}
 
+	this.conn = conn
+
+	return this
 }
 
 func (this *serverSession) Forward(message Message) {
 
+}
+
+func (this *serverSession) Run() {
 }
