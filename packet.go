@@ -27,6 +27,8 @@ type Packet interface {
 
 	GetFlags() byte
 	SetFlags(flags byte)
+
+	Bytes() []byte
 }
 
 type ConnectPacket interface {

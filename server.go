@@ -31,7 +31,7 @@ func newServerSession(conn net.Conn) *serverSession {
 
 func (this *serverSession) Forward(msg Message) error {
 	//TODO: how to filter topic?
-	_, err := this.conn.Write(msg.Packetize())
+	_, err := this.conn.Write(msg.Packetize().Bytes())
 	return err
 }
 
