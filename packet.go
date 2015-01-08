@@ -1,5 +1,13 @@
 package mqtt
 
+import (
+	"bytes"
+	"errors"
+	"fmt"
+)
+
+////////////////////Interface//////////////////////////////
+
 type PacketType byte
 
 const (
@@ -14,54 +22,140 @@ const (
 	PACKET_SUBSCRIBE
 	PACKET_SUBACK
 	PACKET_UNSUBSCRIBE
+	PACKET_UNSUBACK
 	PACKET_PINGREQ
 	PACKET_PINGRESP
 	PACKET_DISCONNECT
 	PACKET_RESERVED_15
 )
 
+type IBytizer interface {
+	IBytize() []byte
+}
+
+type IParser interface {
+	IParse([]byte) error
+}
+
 type Packet interface {
+	IBytizer
+	Bytes() []byte
+
+	IParser
+	Parse([]byte) error
+
 	//Fixed Header
 	GetType() PacketType
 	SetType(pt PacketType)
 
 	GetFlags() byte
 	SetFlags(flags byte)
-
-	Bytes() []byte
 }
 
-type ConnectPacket interface {
-	Packet
+////////////////////Implementation////////////////////////
 
-	//Variable Header
-	GetProtocalName() string
-	SetProtocalName(n string)
+func Packetize(buffer []byte) (pkt Packet, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			pkt = nil
+			err = errors.New(r.(string))
+		}
+	}()
 
-	GetProtocalLevel() byte
-	SetProtocalLevel(l byte)
+	packetType := PacketType((buffer[0] >> 4) & 0x0F)
+	switch packetType {
+	case PACKET_CONNECT:
+		pkt = NewPacketConnect()
+	case PACKET_CONNACK:
+		//pkt = NewPacketConnack()
+	case PACKET_PUBLISH:
+		//pkt = NewPacketPublish()
+	case PACKET_PUBACK:
+		//pkt = NewPacketPuback()
+	case PACKET_PUBREC:
+		//pkt = NewPacketPubrec()
+	case PACKET_PUBREL:
+		//pkt = NewPacketPubrel()
+	case PACKET_PUBCOMP:
+		//pkt = NewPacketPubcomp()
+	case PACKET_SUBSCRIBE:
+		//pkt = NewPacketSubscribe()
+	case PACKET_SUBACK:
+		//pkt = NewPacketSuback()
+	case PACKET_UNSUBSCRIBE:
+		//pkt = NewPacketUnsubscribe()
+	case PACKET_UNSUBACK:
+		//pkt = NewPacketUnsuback()
+	case PACKET_PINGREQ:
+		//pkt = NewPacketPingreq()
+	case PACKET_PINGRESP:
+		//pkt = NewPacketPingresp()
+	case PACKET_DISCONNECT:
+		pkt = NewPacketDisconnect()
+	default:
+		return nil, fmt.Errorf("Invalid Control Packet Type %d\n", packetType)
+	}
 
-	GetConnectFlags() byte
-	SetConnectFlags(f byte)
+	if err = pkt.Parse(buffer); err != nil {
+		return nil, err
+	} else {
+		return pkt, nil
+	}
+}
 
-	GetKeepAlive() uint16
-	SetKeepAlive(t uint16)
+type packet struct {
+	IBytizer
+	IParser
 
-	//Payload
-	GetClientId() string
-	SetClientId(s string)
+	packetType PacketType
+	packetFlag byte
+}
 
-	GetWillTopic() string
-	SetWillTopic(s string)
+func NewPacket() *packet {
+	this := packet{}
+	this.IBytizer = &this
+	this.IParser = &this
+	return &this
+}
 
-	GetWillMessage() string
-	SetWillMessage(s string)
+func (this *packet) IBytize() []byte {
+	var buffer bytes.Buffer
 
-	GetUserName() string
-	SetUserName(s string)
+	buffer.WriteByte((byte(this.packetType) << 4) | (this.packetFlag & 0x0F))
+	buffer.WriteByte(0)
 
-	GetPassword() string
-	SetPassword(s string)
+	return buffer.Bytes()
+}
+
+func (this *packet) Bytes() []byte {
+	return this.IBytizer.IBytize()
+}
+
+func (this *packet) IParse(buffer []byte) error {
+	this.packetType = PacketType((buffer[0] >> 4) & 0x0F)
+	this.packetFlag = buffer[0] & 0x0F
+	return nil
+}
+
+func (this *packet) Parse(buffer []byte) error {
+	return this.IParser.IParse(buffer)
+}
+
+//Fixed Header
+func (this *packet) GetType() PacketType {
+	return this.packetType
+}
+
+func (this *packet) SetType(pt PacketType) {
+	this.packetType = pt
+}
+
+func (this *packet) GetFlags() byte {
+	return this.packetFlag
+}
+
+func (this *packet) SetFlags(flags byte) {
+	this.packetFlag = flags
 }
 
 type ConnackPacket interface {
@@ -171,9 +265,5 @@ type PingreqPacket interface {
 }
 
 type PingrespPacket interface {
-	Packet
-}
-
-type DisconnectPacket interface {
 	Packet
 }
