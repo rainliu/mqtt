@@ -37,13 +37,13 @@ type PublishEvent interface {
 type SubscribeEvent interface {
 	Event
 
-	GetTopics() []string
+	GetSubscribeTopics() []string
 }
 
 type UnsubscribeEvent interface {
 	Event
 
-	GetTopics() []string
+	GetUnsubscribeTopics() []string
 }
 
 type SessionCreatedEvent interface {
@@ -71,3 +71,39 @@ type IOExceptionEvent interface {
 }
 
 ////////////////////Implementation////////////////////////
+type event struct {
+	eventType EventType
+	session   Session
+}
+
+func newEvent(e EventType, s Session) *event {
+	return &event{eventType: e, session: s}
+}
+
+func (this *event) GetEventType() EventType {
+	return this.eventType
+}
+
+func (this *event) GetSession() Session {
+	return this.session
+}
+
+type sessionEvent struct {
+	event
+
+	reason string
+}
+
+func newSessionEvent(e EventType, s Session, r string) *sessionEvent {
+	this := &sessionEvent{}
+
+	this.eventType = e
+	this.session = s
+	this.reason = r
+
+	return this
+}
+
+func (this *sessionEvent) GetReason() string {
+	return this.reason
+}

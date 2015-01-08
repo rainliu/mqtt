@@ -90,9 +90,13 @@ func (this *stack) DeleteProvider(p Provider) {
 }
 
 func (this *stack) Run() {
-	//TODO
+	for _, p := range this.providers {
+		p.Run()
+	}
 }
 
 func (this *stack) Stop() {
-	//TODO
+	for _, p := range this.providers {
+		p.Stop()
+	}
 }

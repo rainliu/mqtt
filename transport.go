@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net"
 	"strconv"
+	"time"
 )
 
 ////////////////////Interface//////////////////////////////
@@ -85,6 +86,7 @@ type serverTransport struct {
 	transport
 
 	lner net.Listener
+	ch   chan bool
 }
 
 func (this *serverTransport) Listen() error {
@@ -96,6 +98,14 @@ func (this *serverTransport) Listen() error {
 	}
 
 	return err
+}
+
+func (this *serverTransport) SetDeadline(t time.Time) error {
+	if tcpln, ok := this.lner.(*net.TCPListener); ok {
+		return tcpln.SetDeadline(t)
+	} else {
+		return errors.New("Listener is not TCPListener\n")
+	}
 }
 
 func (this *serverTransport) Accept() (net.Conn, error) {
@@ -116,6 +126,7 @@ func (this *serverTransport) Accept() (net.Conn, error) {
 
 func (this *serverTransport) Close() {
 	if this.lner != nil {
+		close(this.ch)
 		this.lner.Close()
 	}
 }

@@ -4,13 +4,19 @@ package mqtt
 
 type SessionState int
 
+const (
+	SESSION_STATE_CREATED SessionState = iota
+	SESSION_STATE_ACTIVE
+	SESSION_STATE_TERMINATED
+)
+
 type Session interface {
 	GetRetransmitTimer() int
 	SetRetransmitTimer(retransmitTimer int)
 
 	GetState() SessionState
-
-	Terminate()
+	Error() string
+	Terminate(err error)
 
 	GetAppData() interface{}
 	SetAppData(interface{})
@@ -19,28 +25,39 @@ type Session interface {
 ////////////////////Implementation////////////////////////
 
 type session struct {
+	state           SessionState
+	err             error
+	ch              chan bool
+	appData         interface{}
+	retransmitTimer int
 }
 
 func (this *session) GetRetransmitTimer() int {
-	return 0
+	return this.retransmitTimer
 }
 
 func (this *session) SetRetransmitTimer(retransmitTimer int) {
-
+	this.retransmitTimer = retransmitTimer
 }
 
 func (this *session) GetState() SessionState {
-	return 0
+	return this.state
 }
 
-func (this *session) Terminate() {
+func (this *session) Error() string {
+	return this.err.Error()
+}
 
+func (this *session) Terminate(err error) {
+	this.state = SESSION_STATE_TERMINATED
+	this.err = err
+	close(this.ch)
 }
 
 func (this *session) GetAppData() interface{} {
-	return nil
+	return this.appData
 }
 
-func (this *session) SetAppData(interface{}) {
-
+func (this *session) SetAppData(appData interface{}) {
+	this.appData = appData
 }
