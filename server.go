@@ -7,7 +7,7 @@ import "net"
 type ServerSession interface {
 	Session
 
-	Forward(m Message)
+	Forward(m Message) error
 }
 
 ////////////////////Implementation////////////////////////
@@ -29,12 +29,19 @@ func newServerSession(conn net.Conn) *serverSession {
 	return this
 }
 
-func (this *serverSession) Forward(m Message) {
-	if _, err := this.conn.Write(m.Packetize()); err != nil {
-		this.Terminate(err)
-	}
+func (this *serverSession) Forward(m Message) error {
+	//TODO: how to filter topic?
+	_, err := this.conn.Write(m.Packetize())
+	return err
 }
 
-func (this *serverSession) Process(p []byte) {
+func (this *serverSession) Process(p []byte) Event {
+	switch this.state {
+	case SESSION_STATE_CREATED:
+	case SESSION_STATE_ACTIVE:
+	case SESSION_STATE_TERMINATED:
+	default:
+	}
 
+	return nil
 }

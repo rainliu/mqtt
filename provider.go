@@ -99,8 +99,12 @@ func (this *provider) DeleteClientSession(c ClientSession) {
 }
 
 func (this *provider) Forward(m Message) {
-	for _, st := range this.serverSessions {
-		st.Forward(m)
+	for _, ss := range this.serverSessions {
+		if err := ss.Forward(m); err != nil {
+			for _, ln := range this.listeners {
+				ln.ProcessIOException(newIOExceptionEvent(EVENT_IOEXCEPTION, ss, ss.conn.RemoteAddr()))
+			}
+		}
 	}
 }
 
@@ -174,9 +178,37 @@ func (this *provider) ServeConn(conn net.Conn) {
 				continue
 			}
 			log.Println(err)
-			ss.Terminate(err)
+			for _, ln := range this.listeners {
+				ln.ProcessIOException(newIOExceptionEvent(EVENT_IOEXCEPTION, ss, conn.RemoteAddr()))
+			}
 		} else {
-			ss.Process(packet)
+			if evt := ss.Process(packet); evt != nil {
+				switch evt.GetEventType() {
+				case EVENT_PUBLISH:
+					for _, ln := range this.listeners {
+						ln.ProcessPublish(evt.(PublishEvent))
+					}
+				case EVENT_SUBSCRIBE:
+					for _, ln := range this.listeners {
+						ln.ProcessSubscribe(evt.(SubscribeEvent))
+					}
+				case EVENT_UNSUBSCRIBE:
+					for _, ln := range this.listeners {
+						ln.ProcessUnsubscribe(evt.(UnsubscribeEvent))
+					}
+				case EVENT_TIMEOUT:
+					for _, ln := range this.listeners {
+						ln.ProcessTimeout(evt.(TimeoutEvent))
+					}
+				case EVENT_IOEXCEPTION:
+					for _, ln := range this.listeners {
+						ln.ProcessIOException(evt.(IOExceptionEvent))
+					}
+				case EVENT_SESSION_TERMINATED:
+					//TODO
+				default:
+				}
+			}
 		}
 	}
 

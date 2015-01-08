@@ -1,5 +1,7 @@
 package mqtt
 
+import "net"
+
 ////////////////////Interface//////////////////////////////
 
 type EventType int
@@ -16,10 +18,10 @@ const (
 	EVENT_IOEXCEPTION
 )
 
-type Timeout int
+type TimeoutType int
 
 const (
-	TIMEOUT_RETRANSMIT Timeout = iota
+	TIMEOUT_RETRANSMIT TimeoutType = iota
 	TIMEOUT_SESSION
 )
 
@@ -61,13 +63,13 @@ type SessionTerminatedEvent interface {
 type TimeoutEvent interface {
 	Event
 
-	GetTimeout() Timeout
+	GetTimeoutType() TimeoutType
 }
 
 type IOExceptionEvent interface {
 	Event
 
-	GetTransport() Transport
+	GetRemoteAddr() net.Addr
 }
 
 ////////////////////Implementation////////////////////////
@@ -106,4 +108,44 @@ func newSessionEvent(e EventType, s Session, r string) *sessionEvent {
 
 func (this *sessionEvent) GetReason() string {
 	return this.reason
+}
+
+type timeoutEvent struct {
+	event
+
+	timeoutType TimeoutType
+}
+
+func newTimeoutEvent(e EventType, s Session, t TimeoutType) *timeoutEvent {
+	this := &timeoutEvent{}
+
+	this.eventType = e
+	this.session = s
+	this.timeoutType = t
+
+	return this
+}
+
+func (this *timeoutEvent) GetTimeoutType() TimeoutType {
+	return this.timeoutType
+}
+
+type ioExceptionEvent struct {
+	event
+
+	addr net.Addr
+}
+
+func newIOExceptionEvent(e EventType, s Session, addr net.Addr) *ioExceptionEvent {
+	this := &ioExceptionEvent{}
+
+	this.eventType = e
+	this.session = s
+	this.addr = addr
+
+	return this
+}
+
+func (this *ioExceptionEvent) GetRemoteAddr() net.Addr {
+	return this.addr
 }
