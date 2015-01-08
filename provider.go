@@ -111,7 +111,7 @@ func (this *provider) Run() {
 		} else {
 			log.Printf("Listening %s//%s:%d Runing...\n", st.GetNetwork(), st.GetAddress(), st.GetPort())
 			this.waitGroup.Add(1)
-			go this.ServeAccept(st.(*serverTransport))
+			go this.ServeAccept(st.(*transport))
 		}
 	}
 }
@@ -126,7 +126,7 @@ func (this *provider) Stop() {
 	this.waitGroup.Wait()
 }
 
-func (this *provider) ServeAccept(st *serverTransport) {
+func (this *provider) ServeAccept(st *transport) {
 	defer this.waitGroup.Done()
 	for {
 		select {

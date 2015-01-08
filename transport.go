@@ -46,10 +46,23 @@ type transport struct {
 	network string
 	address string //for server, it is laddr; for client, it is raddr
 	port    int
+
+	//for server
+	lner net.Listener
+	ch   chan bool
 }
 
 func newTransport(network string, address string, port int) *transport {
-	return &transport{network: network, address: address, port: port}
+	this := &transport{}
+
+	this.network = network
+	this.address = address
+	this.port = port
+
+	this.lner = nil
+	this.ch = make(chan bool)
+
+	return this
 }
 
 func (this *transport) GetNetwork() string {
@@ -65,11 +78,7 @@ func (this *transport) GetPort() int {
 }
 
 //Client Transport
-type clientTransport struct {
-	transport
-}
-
-func (this *clientTransport) Dial() (net.Conn, error) {
+func (this *transport) Dial() (net.Conn, error) {
 	var conn net.Conn
 	var err error
 
@@ -82,14 +91,7 @@ func (this *clientTransport) Dial() (net.Conn, error) {
 }
 
 //Sever Transport
-type serverTransport struct {
-	transport
-
-	lner net.Listener
-	ch   chan bool
-}
-
-func (this *serverTransport) Listen() error {
+func (this *transport) Listen() error {
 	var err error
 
 	switch this.network {
@@ -100,15 +102,7 @@ func (this *serverTransport) Listen() error {
 	return err
 }
 
-func (this *serverTransport) SetDeadline(t time.Time) error {
-	if tcpln, ok := this.lner.(*net.TCPListener); ok {
-		return tcpln.SetDeadline(t)
-	} else {
-		return errors.New("Listener is not TCPListener\n")
-	}
-}
-
-func (this *serverTransport) Accept() (net.Conn, error) {
+func (this *transport) Accept() (net.Conn, error) {
 	if this.lner != nil {
 		var conn net.Conn
 		var err error
@@ -124,9 +118,17 @@ func (this *serverTransport) Accept() (net.Conn, error) {
 	}
 }
 
-func (this *serverTransport) Close() {
+func (this *transport) Close() {
 	if this.lner != nil {
 		close(this.ch)
 		this.lner.Close()
+	}
+}
+
+func (this *transport) SetDeadline(t time.Time) error {
+	if tcpln, ok := this.lner.(*net.TCPListener); ok {
+		return tcpln.SetDeadline(t)
+	} else {
+		return errors.New("Listener doesn't support SetDeadline\n")
 	}
 }
