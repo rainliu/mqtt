@@ -40,6 +40,7 @@ type SubscribeEvent interface {
 	Event
 
 	GetSubscribeTopics() []string
+	GetQos() []QOS
 }
 
 type UnsubscribeEvent interface {

@@ -21,9 +21,9 @@ type Provider interface {
 
 	CreateClientSession(ct ClientTransport) ClientSession
 	GetClientSessions() []ClientSession
-	DeleteClientSession(ct ClientSession)
+	DeleteClientSession(cs ClientSession)
 
-	Forward(m Message)
+	Forward(msg Message)
 }
 
 ////////////////////Implementation////////////////////////
@@ -94,13 +94,13 @@ func (this *provider) GetClientSessions() []ClientSession {
 	return clientSessions
 }
 
-func (this *provider) DeleteClientSession(c ClientSession) {
-	delete(this.clientSessions, c)
+func (this *provider) DeleteClientSession(cs ClientSession) {
+	delete(this.clientSessions, cs)
 }
 
-func (this *provider) Forward(m Message) {
+func (this *provider) Forward(msg Message) {
 	for _, ss := range this.serverSessions {
-		if err := ss.Forward(m); err != nil {
+		if err := ss.Forward(msg); err != nil {
 			for _, ln := range this.listeners {
 				ln.ProcessIOException(newIOExceptionEvent(EVENT_IOEXCEPTION, ss, ss.conn.RemoteAddr()))
 			}
@@ -163,7 +163,7 @@ func (this *provider) ServeConn(conn net.Conn) {
 		ln.ProcessSessionCreated(newSessionEvent(EVENT_SESSION_CREATED, ss, "New Connection Coming"))
 	}
 
-	var packet []byte
+	var pkt []byte
 	var err error
 	for {
 		select {
@@ -173,7 +173,7 @@ func (this *provider) ServeConn(conn net.Conn) {
 		default:
 		}
 		conn.SetDeadline(time.Now().Add(1e9))
-		if packet, err = ioutil.ReadAll(conn); err != nil {
+		if pkt, err = ioutil.ReadAll(conn); err != nil {
 			if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
 				continue
 			}
@@ -182,7 +182,7 @@ func (this *provider) ServeConn(conn net.Conn) {
 				ln.ProcessIOException(newIOExceptionEvent(EVENT_IOEXCEPTION, ss, conn.RemoteAddr()))
 			}
 		} else {
-			if evt := ss.Process(packet); evt != nil {
+			if evt := ss.Process(pkt); evt != nil {
 				switch evt.GetEventType() {
 				case EVENT_PUBLISH:
 					for _, ln := range this.listeners {
