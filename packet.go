@@ -44,12 +44,15 @@ type Packet interface {
 	IParser
 	Parse([]byte) error
 
+	EncodingRemainingLength(X uint32) ([]byte, error)
+	DecodingRemainingLength([]byte) (uint32, uint32, error)
+
 	//Fixed Header
 	GetType() PacketType
-	SetType(pt PacketType)
+	SetType(PacketType)
 
 	GetFlags() byte
-	SetFlags(flags byte)
+	SetFlags(byte)
 }
 
 ////////////////////Implementation////////////////////////
@@ -87,13 +90,17 @@ func Packetize(buffer []byte) (pkt Packet, err error) {
 	case PACKET_UNSUBACK:
 		//pkt = NewPacketUnsuback()
 	case PACKET_PINGREQ:
-		//pkt = NewPacketPingreq()
+		pkt = NewPacket(PACKET_PINGREQ)
 	case PACKET_PINGRESP:
-		//pkt = NewPacketPingresp()
+		pkt = NewPacket(PACKET_PINGRESP)
 	case PACKET_DISCONNECT:
-		pkt = NewPacketDisconnect()
+		pkt = NewPacket(PACKET_DISCONNECT)
 	default:
 		return nil, fmt.Errorf("Invalid Control Packet Type %d\n", packetType)
+	}
+
+	if pkt == nil {
+		return nil, errors.New("Can't NewPacket")
 	}
 
 	if err = pkt.Parse(buffer); err != nil {
@@ -111,10 +118,23 @@ type packet struct {
 	packetFlag byte
 }
 
-func NewPacket() *packet {
+func NewPacket(pt PacketType) *packet {
+	if !(pt == PACKET_PINGREQ || pt == PACKET_PINGRESP || pt == PACKET_DISCONNECT) {
+		return nil
+	}
+
 	this := packet{}
+
 	this.IBytizer = &this
 	this.IParser = &this
+
+	this.packetType = pt
+	if pt == PACKET_PUBREL || pt == PACKET_SUBSCRIBE || pt == PACKET_UNSUBSCRIBE {
+		this.packetFlag = 2
+	} else {
+		this.packetFlag = 0
+	}
+
 	return &this
 }
 
@@ -132,8 +152,20 @@ func (this *packet) Bytes() []byte {
 }
 
 func (this *packet) IParse(buffer []byte) error {
-	this.packetType = PacketType((buffer[0] >> 4) & 0x0F)
-	this.packetFlag = buffer[0] & 0x0F
+	if buffer == nil || len(buffer) != 2 {
+		return errors.New("Invalid Control Packet Size")
+	}
+
+	if packetType := PacketType((buffer[0] >> 4) & 0x0F); packetType != this.packetType {
+		return fmt.Errorf("Invalid Control Packet Type %d\n", packetType)
+	}
+	if packetFlag := buffer[0] & 0x0F; packetFlag != this.packetFlag {
+		return fmt.Errorf("Invalid Control Packet Flags %d\n", packetFlag)
+	}
+	if buffer[1] != 0 {
+		return fmt.Errorf("Invalid Control Packet Remaining Length %d\n", buffer[1])
+	}
+
 	return nil
 }
 
@@ -141,11 +173,52 @@ func (this *packet) Parse(buffer []byte) error {
 	return this.IParser.IParse(buffer)
 }
 
+func (this *packet) EncodingRemainingLength(X uint32) ([]byte, error) {
+	if X > 0xFFFFFF7F {
+		return nil, errors.New("X value > 0xFFFFFF7F")
+	}
+
+	var buffer bytes.Buffer
+	var encodedByte byte
+	for X > 0 {
+		encodedByte = byte(X % 128)
+		X = X / 128
+		if X > 0 {
+			encodedByte = encodedByte | 128
+		} else {
+			buffer.WriteByte(encodedByte)
+		}
+	}
+
+	return buffer.Bytes(), nil
+}
+func (this *packet) DecodingRemainingLength(buffer []byte) (uint32, uint32, error) {
+	multipler := uint32(1)
+	encodedByte := byte(128)
+
+	value := uint32(0)
+	i := 0
+	for encodedByte&128 != 0 {
+		if len(buffer) > i {
+			encodedByte = buffer[i]
+			i++
+			value += uint32(encodedByte&127) * multipler
+			multipler *= 128
+			if multipler > 128*128*128 {
+				return 0, 0, errors.New("Malformed Remaining Length")
+			}
+		} else {
+			return 0, 0, errors.New("Malformed Remaining Length")
+		}
+	}
+
+	return value, uint32(i), nil
+}
+
 //Fixed Header
 func (this *packet) GetType() PacketType {
 	return this.packetType
 }
-
 func (this *packet) SetType(pt PacketType) {
 	this.packetType = pt
 }
@@ -153,9 +226,8 @@ func (this *packet) SetType(pt PacketType) {
 func (this *packet) GetFlags() byte {
 	return this.packetFlag
 }
-
-func (this *packet) SetFlags(flags byte) {
-	this.packetFlag = flags
+func (this *packet) SetFlags(pf byte) {
+	this.packetFlag = pf
 }
 
 type ConnackPacket interface {
@@ -228,18 +300,6 @@ type SubscribePacket interface {
 	SetQos([]QOS)
 }
 
-type SubackPacket interface {
-	Packet
-
-	//Variable Header
-	GetPacketId() uint16
-	SetPacketId(id uint16)
-
-	//Payload
-	GetReturnCode() []byte
-	SetReturnCode([]byte)
-}
-
 type UnsubscribePacket interface {
 	Packet
 
@@ -250,20 +310,4 @@ type UnsubscribePacket interface {
 	//Payload
 	GetUnsubscribeTopics() []string
 	SetUnsubscribeTopics([]string)
-}
-
-type UnsubackPacket interface {
-	Packet
-
-	//Variable Header
-	GetPacketId() uint16
-	SetPacketId(id uint16)
-}
-
-type PingreqPacket interface {
-	Packet
-}
-
-type PingrespPacket interface {
-	Packet
 }
