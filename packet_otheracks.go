@@ -7,7 +7,7 @@ import (
 )
 
 ////////////////////Interface//////////////////////////////
-type PubackPacket interface {
+type PacketPuback interface {
 	Packet
 
 	//Variable Header
@@ -15,7 +15,7 @@ type PubackPacket interface {
 	SetPacketId(id uint16)
 }
 
-type PubrecPacket interface {
+type PacketPubrec interface {
 	Packet
 
 	//Variable Header
@@ -23,7 +23,7 @@ type PubrecPacket interface {
 	SetPacketId(id uint16)
 }
 
-type PubrelPacket interface {
+type PacketPubrel interface {
 	Packet
 
 	//Variable Header
@@ -31,7 +31,7 @@ type PubrelPacket interface {
 	SetPacketId(id uint16)
 }
 
-type PubcompPacket interface {
+type PacketPubcomp interface {
 	Packet
 
 	//Variable Header
@@ -39,7 +39,7 @@ type PubcompPacket interface {
 	SetPacketId(id uint16)
 }
 
-type UnsubackPacket interface {
+type PacketUnsuback interface {
 	Packet
 
 	//Variable Header

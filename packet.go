@@ -55,15 +55,15 @@ type Packet interface {
 	SetFlags(byte)
 }
 
-type PingreqPacket interface {
+type PacketPingreq interface {
 	Packet
 }
 
-type PingrespPacket interface {
+type PacketPingresp interface {
 	Packet
 }
 
-type DisconnectPacket interface {
+type PacketDisconnect interface {
 	Packet
 }
 

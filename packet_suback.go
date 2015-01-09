@@ -8,7 +8,7 @@ import (
 
 ////////////////////Interface//////////////////////////////
 
-type SubackPacket interface {
+type PacketSuback interface {
 	Packet
 
 	//Variable Header

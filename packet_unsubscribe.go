@@ -2,7 +2,7 @@ package mqtt
 
 ////////////////////Interface//////////////////////////////
 
-type UnsubscribePacket interface {
+type PacketUnsubscribe interface {
 	Packet
 
 	//Variable Header

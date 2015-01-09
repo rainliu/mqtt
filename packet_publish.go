@@ -2,7 +2,7 @@ package mqtt
 
 ////////////////////Interface//////////////////////////////
 
-type PublishPacket interface {
+type PacketPublish interface {
 	Packet
 
 	//Variable Header

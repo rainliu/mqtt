@@ -26,7 +26,7 @@ type Message interface {
 	GetContent() string
 	SetContent(content string)
 
-	Packetize() PublishPacket
+	Packetize() Packet
 }
 
 ////////////////////Implementation////////////////////////

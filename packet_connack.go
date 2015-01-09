@@ -2,7 +2,7 @@ package mqtt
 
 ////////////////////Interface//////////////////////////////
 
-type ConnackPacket interface {
+type PacketConnack interface {
 	Packet
 
 	//Variable Header
