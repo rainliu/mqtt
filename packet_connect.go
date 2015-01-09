@@ -7,6 +7,15 @@ import (
 )
 
 ////////////////////Interface//////////////////////////////
+const (
+	CONNECT_FLAG_RESERVED byte = 1 << iota
+	CONNECT_FLAG_CLEAN_SESSION
+	CONNECT_FLAG_WILL_FLAG
+	CONNECT_FLAG_WILL_QOS
+	CONNECT_FLAG_WILL_RETAIN
+	CONNECT_FLAG_PASSWORD_FLAG
+	CONNECT_FLAG_USERNAME_FLAG
+)
 
 type PacketConnect interface {
 	Packet
@@ -93,18 +102,18 @@ func (this *packet_connect) IBytize() []byte {
 	buffer2.Write(clientId)
 
 	//Will Flag bit 2
-	if (this.connectFlags>>2)&0x1 != 0 {
+	if (this.connectFlags & CONNECT_FLAG_WILL_FLAG) != 0 {
 		buffer2.Write(this.EncodingUTF8(this.willTopic))
 		buffer2.Write(this.EncodingUTF8(this.willMessage))
 	}
 
 	//UserName Flag bit 7
-	if (this.connectFlags>>7)&0x1 != 0 {
+	if (this.connectFlags & CONNECT_FLAG_USERNAME_FLAG) != 0 {
 		buffer2.Write(this.EncodingUTF8(this.userName))
 	}
 
 	//Password Flag bit 6
-	if (this.connectFlags>>7)&0x1 != 0 {
+	if (this.connectFlags & CONNECT_FLAG_PASSWORD_FLAG) != 0 {
 		buffer2.Write(this.EncodingBinary(this.password))
 	}
 
@@ -168,7 +177,7 @@ func (this *packet_connect) IParse(buffer []byte) error {
 	consumedBytes += utf8Bytes
 
 	//Will Flag bit 2
-	if (this.connectFlags>>2)&0x1 != 0 {
+	if (this.connectFlags & CONNECT_FLAG_WILL_FLAG) != 0 {
 		if this.willTopic, utf8Bytes, err = this.DecodingUTF8(buffer[consumedBytes:]); err != nil {
 			return err
 		}
@@ -181,7 +190,7 @@ func (this *packet_connect) IParse(buffer []byte) error {
 	}
 
 	//UserName Flag bit 7
-	if (this.connectFlags>>7)&0x1 != 0 {
+	if (this.connectFlags & CONNECT_FLAG_USERNAME_FLAG) != 0 {
 		if this.userName, utf8Bytes, err = this.DecodingUTF8(buffer[consumedBytes:]); err != nil {
 			return err
 		}
@@ -189,7 +198,7 @@ func (this *packet_connect) IParse(buffer []byte) error {
 	}
 
 	//Password Flag bit 6
-	if (this.connectFlags>>7)&0x1 != 0 {
+	if (this.connectFlags & CONNECT_FLAG_PASSWORD_FLAG) != 0 {
 		if this.password, utf8Bytes, err = this.DecodingBinary(buffer[consumedBytes:]); err != nil {
 			return err
 		}
