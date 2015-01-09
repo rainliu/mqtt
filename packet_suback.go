@@ -91,6 +91,11 @@ func (this *packet_suback) IParse(buffer []byte) error {
 	//Payload
 	this.returnCode = make([]byte, this.remainingLength-2)
 	copy(this.returnCode, buffer[consumedBytes:consumedBytes+this.remainingLength-2])
+	for i := 0; i < int(this.remainingLength-2); i++ {
+		if !(this.returnCode[i] <= 0x02 || this.returnCode[i] == 0x80) {
+			return fmt.Errorf("Invalid Control Packet %d-th Return Code %02x\n", i, this.returnCode[i])
+		}
+	}
 
 	return nil
 }

@@ -55,6 +55,18 @@ type Packet interface {
 	SetFlags(byte)
 }
 
+type PingreqPacket interface {
+	Packet
+}
+
+type PingrespPacket interface {
+	Packet
+}
+
+type DisconnectPacket interface {
+	Packet
+}
+
 ////////////////////Implementation////////////////////////
 
 func Packetize(buffer []byte) (pkt Packet, err error) {
@@ -68,27 +80,27 @@ func Packetize(buffer []byte) (pkt Packet, err error) {
 	packetType := PacketType((buffer[0] >> 4) & 0x0F)
 	switch packetType {
 	case PACKET_CONNECT:
-		pkt = NewPacketConnect()
+		//pkt = NewPacketConnect()
 	case PACKET_CONNACK:
 		//pkt = NewPacketConnack()
 	case PACKET_PUBLISH:
 		//pkt = NewPacketPublish()
 	case PACKET_PUBACK:
-		//pkt = NewPacketPuback()
+		pkt = NewPacketAck(PACKET_PUBACK)
 	case PACKET_PUBREC:
-		//pkt = NewPacketPubrec()
+		pkt = NewPacketAck(PACKET_PUBREC)
 	case PACKET_PUBREL:
-		//pkt = NewPacketPubrel()
+		pkt = NewPacketAck(PACKET_PUBREL)
 	case PACKET_PUBCOMP:
-		//pkt = NewPacketPubcomp()
+		pkt = NewPacketAck(PACKET_PUBCOMP)
 	case PACKET_SUBSCRIBE:
 		//pkt = NewPacketSubscribe()
 	case PACKET_SUBACK:
-		//pkt = NewPacketSuback()
+		pkt = NewPacketSuback()
 	case PACKET_UNSUBSCRIBE:
 		//pkt = NewPacketUnsubscribe()
 	case PACKET_UNSUBACK:
-		//pkt = NewPacketUnsuback()
+		pkt = NewPacketAck(PACKET_UNSUBACK)
 	case PACKET_PINGREQ:
 		pkt = NewPacket(PACKET_PINGREQ)
 	case PACKET_PINGRESP:
@@ -251,38 +263,6 @@ type PublishPacket interface {
 	//Payload
 	GetMessage() Message
 	SetMessage(Message)
-}
-
-type PubackPacket interface {
-	Packet
-
-	//Variable Header
-	GetPacketId() uint16
-	SetPacketId(id uint16)
-}
-
-type PubrecPacket interface {
-	Packet
-
-	//Variable Header
-	GetPacketId() uint16
-	SetPacketId(id uint16)
-}
-
-type PubrelPacket interface {
-	Packet
-
-	//Variable Header
-	GetPacketId() uint16
-	SetPacketId(id uint16)
-}
-
-type PubcompPacket interface {
-	Packet
-
-	//Variable Header
-	GetPacketId() uint16
-	SetPacketId(id uint16)
 }
 
 type SubscribePacket interface {

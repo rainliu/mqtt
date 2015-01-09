@@ -7,6 +7,37 @@ import (
 )
 
 ////////////////////Interface//////////////////////////////
+type PubackPacket interface {
+	Packet
+
+	//Variable Header
+	GetPacketId() uint16
+	SetPacketId(id uint16)
+}
+
+type PubrecPacket interface {
+	Packet
+
+	//Variable Header
+	GetPacketId() uint16
+	SetPacketId(id uint16)
+}
+
+type PubrelPacket interface {
+	Packet
+
+	//Variable Header
+	GetPacketId() uint16
+	SetPacketId(id uint16)
+}
+
+type PubcompPacket interface {
+	Packet
+
+	//Variable Header
+	GetPacketId() uint16
+	SetPacketId(id uint16)
+}
 
 type UnsubackPacket interface {
 	Packet
@@ -18,25 +49,33 @@ type UnsubackPacket interface {
 
 ////////////////////Implementation////////////////////////
 
-type packet_unsuback struct {
+type packet_ack struct {
 	packet
 
 	packetId uint16
 }
 
-func NewPacketUnsuback() *packet_unsuback {
-	this := packet_unsuback{}
+func NewPacketAck(pt PacketType) *packet_ack {
+	if !(pt == PACKET_PUBACK || pt == PACKET_PUBREC || pt == PACKET_PUBREL || pt == PACKET_PUBCOMP || pt == PACKET_UNSUBACK) {
+		return nil
+	}
+
+	this := packet_ack{}
 
 	this.IBytizer = &this
 	this.IParser = &this
 
-	this.packetType = PACKET_UNSUBACK
-	this.packetFlag = 0
+	this.packetType = pt
+	if pt == PACKET_PUBREL || pt == PACKET_SUBSCRIBE || pt == PACKET_UNSUBSCRIBE {
+		this.packetFlag = 2
+	} else {
+		this.packetFlag = 0
+	}
 
 	return &this
 }
 
-func (this *packet_unsuback) IBytize() []byte {
+func (this *packet_ack) IBytize() []byte {
 	var buffer bytes.Buffer
 
 	buffer.WriteByte((byte(this.packetType) << 4) | (this.packetFlag & 0x0F))
@@ -47,7 +86,7 @@ func (this *packet_unsuback) IBytize() []byte {
 	return buffer.Bytes()
 }
 
-func (this *packet_unsuback) IParse(buffer []byte) error {
+func (this *packet_ack) IParse(buffer []byte) error {
 	if buffer == nil || len(buffer) != 4 {
 		return errors.New("Invalid Control Packet Size")
 	}
@@ -68,9 +107,9 @@ func (this *packet_unsuback) IParse(buffer []byte) error {
 }
 
 //Variable Header
-func (this *packet_unsuback) GetPacketId() uint16 {
+func (this *packet_ack) GetPacketId() uint16 {
 	return this.packetId
 }
-func (this *packet_unsuback) SetPacketId(id uint16) {
+func (this *packet_ack) SetPacketId(id uint16) {
 	this.packetId = id
 }
