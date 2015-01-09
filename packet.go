@@ -47,6 +47,12 @@ type Packet interface {
 	EncodingRemainingLength(X uint32) ([]byte, error)
 	DecodingRemainingLength([]byte) (uint32, uint32, error)
 
+	EncodingUTF8(U string) []byte
+	DecodingUTF8([]byte) (string, uint32, error)
+
+	EncodingBinary(B []byte) []byte
+	DecodingBinary([]byte) ([]byte, uint32, error)
+
 	//Fixed Header
 	GetType() PacketType
 	SetType(PacketType)
@@ -225,6 +231,54 @@ func (this *packet) DecodingRemainingLength(buffer []byte) (uint32, uint32, erro
 	}
 
 	return value, uint32(i), nil
+}
+
+func (this *packet) EncodingUTF8(U string) []byte {
+	var buffer bytes.Buffer
+
+	length := uint16(len(U))
+	buffer.WriteByte(byte(length >> 8))
+	buffer.WriteByte(byte(length & 0xFF))
+
+	buffer.WriteString(U)
+
+	return buffer.Bytes()
+}
+func (this *packet) DecodingUTF8(buffer []byte) (string, uint32, error) {
+	if len(buffer) < 2 {
+		return "", 0, errors.New("Malformed UTF8 encoded strings")
+	}
+
+	length := ((uint16(buffer[0])) << 8) | uint16(buffer[1])
+	if len(buffer) < int(2+length) {
+		return "", 0, errors.New("Malformed UTF8 encoded strings")
+	}
+
+	return string(buffer[2 : 2+length]), uint32(2 + length), nil
+}
+
+func (this *packet) EncodingBinary(B []byte) []byte {
+	var buffer bytes.Buffer
+
+	length := uint16(len(B))
+	buffer.WriteByte(byte(length >> 8))
+	buffer.WriteByte(byte(length & 0xFF))
+
+	buffer.Write(B)
+
+	return buffer.Bytes()
+}
+func (this *packet) DecodingBinary(buffer []byte) ([]byte, uint32, error) {
+	if len(buffer) < 2 {
+		return nil, 0, errors.New("Malformed UTF8 encoded strings")
+	}
+
+	length := ((uint16(buffer[0])) << 8) | uint16(buffer[1])
+	if len(buffer) < int(2+length) {
+		return nil, 0, errors.New("Malformed UTF8 encoded strings")
+	}
+
+	return buffer[2 : 2+length], uint32(2 + length), nil
 }
 
 //Fixed Header
