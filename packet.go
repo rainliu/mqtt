@@ -86,11 +86,11 @@ func Packetize(buffer []byte) (pkt Packet, err error) {
 	packetType := PacketType((buffer[0] >> 4) & 0x0F)
 	switch packetType {
 	case PACKET_CONNECT:
-		//pkt = NewPacketConnect()
+		pkt = NewPacketConnect()
 	case PACKET_CONNACK:
-		//pkt = NewPacketConnack()
+		pkt = NewPacketConnack()
 	case PACKET_PUBLISH:
-		//pkt = NewPacketPublish()
+		pkt = NewPacketPublish()
 	case PACKET_PUBACK:
 		pkt = NewPacketAck(PACKET_PUBACK)
 	case PACKET_PUBREC:
@@ -100,11 +100,11 @@ func Packetize(buffer []byte) (pkt Packet, err error) {
 	case PACKET_PUBCOMP:
 		pkt = NewPacketAck(PACKET_PUBCOMP)
 	case PACKET_SUBSCRIBE:
-		//pkt = NewPacketSubscribe()
+		pkt = NewPacketSubscribe()
 	case PACKET_SUBACK:
 		pkt = NewPacketSuback()
 	case PACKET_UNSUBSCRIBE:
-		//pkt = NewPacketUnsubscribe()
+		pkt = NewPacketUnsubscribe()
 	case PACKET_UNSUBACK:
 		pkt = NewPacketAck(PACKET_UNSUBACK)
 	case PACKET_PINGREQ:
