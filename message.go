@@ -26,7 +26,7 @@ type Message interface {
 	GetContent() string
 	SetContent(content string)
 
-	Packetize() Packet
+	Packetize(packetId uint16) PacketPublish
 }
 
 ////////////////////Implementation////////////////////////
@@ -82,6 +82,9 @@ func (this *message) SetContent(content string) {
 	this.content = content
 }
 
-func (this *message) Packetize() Packet {
-	return nil
+func (this *message) Packetize(packetId uint16) PacketPublish {
+	pkt := NewPacketPublish()
+	pkt.SetPacketId(packetId)
+	pkt.SetMessage(this)
+	return pkt
 }
