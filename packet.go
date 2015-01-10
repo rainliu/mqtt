@@ -92,13 +92,13 @@ func Packetize(buffer []byte) (pkt Packet, err error) {
 	case PACKET_PUBLISH:
 		pkt = NewPacketPublish()
 	case PACKET_PUBACK:
-		pkt = NewPacketAck(PACKET_PUBACK)
+		pkt = NewPacketAcks(PACKET_PUBACK)
 	case PACKET_PUBREC:
-		pkt = NewPacketAck(PACKET_PUBREC)
+		pkt = NewPacketAcks(PACKET_PUBREC)
 	case PACKET_PUBREL:
-		pkt = NewPacketAck(PACKET_PUBREL)
+		pkt = NewPacketAcks(PACKET_PUBREL)
 	case PACKET_PUBCOMP:
-		pkt = NewPacketAck(PACKET_PUBCOMP)
+		pkt = NewPacketAcks(PACKET_PUBCOMP)
 	case PACKET_SUBSCRIBE:
 		pkt = NewPacketSubscribe()
 	case PACKET_SUBACK:
@@ -106,7 +106,7 @@ func Packetize(buffer []byte) (pkt Packet, err error) {
 	case PACKET_UNSUBSCRIBE:
 		pkt = NewPacketUnsubscribe()
 	case PACKET_UNSUBACK:
-		pkt = NewPacketAck(PACKET_UNSUBACK)
+		pkt = NewPacketAcks(PACKET_UNSUBACK)
 	case PACKET_PINGREQ:
 		pkt = NewPacket(PACKET_PINGREQ)
 	case PACKET_PINGRESP:

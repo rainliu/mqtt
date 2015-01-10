@@ -49,18 +49,18 @@ type PacketUnsuback interface {
 
 ////////////////////Implementation////////////////////////
 
-type packet_ack struct {
+type packet_acks struct {
 	packet
 
 	packetId uint16
 }
 
-func NewPacketAck(pt PacketType) *packet_ack {
+func NewPacketAcks(pt PacketType) *packet_acks {
 	if !(pt == PACKET_PUBACK || pt == PACKET_PUBREC || pt == PACKET_PUBREL || pt == PACKET_PUBCOMP || pt == PACKET_UNSUBACK) {
 		return nil
 	}
 
-	this := packet_ack{}
+	this := packet_acks{}
 
 	this.IBytizer = &this
 	this.IParser = &this
@@ -75,7 +75,7 @@ func NewPacketAck(pt PacketType) *packet_ack {
 	return &this
 }
 
-func (this *packet_ack) IBytize() []byte {
+func (this *packet_acks) IBytize() []byte {
 	var buffer bytes.Buffer
 
 	buffer.WriteByte((byte(this.packetType) << 4) | (this.packetFlag & 0x0F))
@@ -86,7 +86,7 @@ func (this *packet_ack) IBytize() []byte {
 	return buffer.Bytes()
 }
 
-func (this *packet_ack) IParse(buffer []byte) error {
+func (this *packet_acks) IParse(buffer []byte) error {
 	if buffer == nil || len(buffer) != 4 {
 		return errors.New("Invalid Control Packet Size")
 	}
@@ -107,9 +107,9 @@ func (this *packet_ack) IParse(buffer []byte) error {
 }
 
 //Variable Header
-func (this *packet_ack) GetPacketId() uint16 {
+func (this *packet_acks) GetPacketId() uint16 {
 	return this.packetId
 }
-func (this *packet_ack) SetPacketId(id uint16) {
+func (this *packet_acks) SetPacketId(id uint16) {
 	this.packetId = id
 }
