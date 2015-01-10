@@ -1,6 +1,7 @@
 package mqtt
 
 import (
+	"crypto/tls"
 	"errors"
 	"net"
 	"strconv"
@@ -24,6 +25,7 @@ type Transport interface {
 	GetNetwork() string //"tcp", "tls", or "ws"...
 	GetAddress() string
 	GetPort() int
+	GetTLSConfig() *tls.Config
 }
 
 type ClientTransport interface {
@@ -46,18 +48,20 @@ type transport struct {
 	network string
 	address string //for server, it is laddr; for client, it is raddr
 	port    int
+	tlsc    *tls.Config
 
 	//for server
 	lner net.Listener
 	ch   chan bool
 }
 
-func newTransport(network string, address string, port int) *transport {
+func newTransport(network string, address string, port int, tlsc *tls.Config) *transport {
 	this := &transport{}
 
 	this.network = network
 	this.address = address
 	this.port = port
+	this.tlsc = tlsc
 
 	this.lner = nil
 	this.ch = make(chan bool)
@@ -77,6 +81,10 @@ func (this *transport) GetPort() int {
 	return this.port
 }
 
+func (this *transport) GetTLSConfig() *tls.Config {
+	return this.tlsc
+}
+
 //Client Transport
 func (this *transport) Dial() (net.Conn, error) {
 	var conn net.Conn
@@ -85,6 +93,12 @@ func (this *transport) Dial() (net.Conn, error) {
 	switch this.network {
 	case TCP:
 		conn, err = net.Dial("tcp", net.JoinHostPort(this.address, strconv.Itoa(this.port)))
+	case SSL:
+		fallthrough
+	case TCPS:
+		fallthrough
+	case TLS:
+		conn, err = tls.Dial("tcp", net.JoinHostPort(this.address, strconv.Itoa(this.port)), this.tlsc)
 	}
 
 	return conn, err
@@ -97,6 +111,12 @@ func (this *transport) Listen() error {
 	switch this.network {
 	case TCP:
 		this.lner, err = net.Listen("tcp", net.JoinHostPort(this.address, strconv.Itoa(this.port)))
+	case SSL:
+		fallthrough
+	case TCPS:
+		fallthrough
+	case TLS:
+		this.lner, err = tls.Listen("tcp", net.JoinHostPort(this.address, strconv.Itoa(this.port)), this.tlsc)
 	}
 
 	return err
@@ -109,6 +129,12 @@ func (this *transport) Accept() (net.Conn, error) {
 
 		switch this.network {
 		case TCP:
+			fallthrough
+		case SSL:
+			fallthrough
+		case TCPS:
+			fallthrough
+		case TLS:
 			conn, err = this.lner.Accept()
 		}
 

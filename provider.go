@@ -111,9 +111,9 @@ func (this *provider) Forward(msg Message) {
 func (this *provider) Run() {
 	for _, st := range this.serverTransports {
 		if err := st.Listen(); err != nil {
-			log.Printf("Listening %s//%s:%d Failed!!!\n", st.GetNetwork(), st.GetAddress(), st.GetPort())
+			log.Printf("Listening %s://%s:%d Failed!!!\n", st.GetNetwork(), st.GetAddress(), st.GetPort())
 		} else {
-			log.Printf("Listening %s//%s:%d Runing...\n", st.GetNetwork(), st.GetAddress(), st.GetPort())
+			log.Printf("Listening %s://%s:%d Runing...\n", st.GetNetwork(), st.GetAddress(), st.GetPort())
 			this.waitGroup.Add(1)
 			go this.ServeAccept(st.(*transport))
 		}
@@ -135,7 +135,7 @@ func (this *provider) ServeAccept(st *transport) {
 	for {
 		select {
 		case <-st.ch:
-			log.Println("Listening %s//%s:%d Stoped!!!\n", st.GetNetwork(), st.GetAddress(), st.GetPort())
+			log.Println("Listening %s://%s:%d Stoped!!!\n", st.GetNetwork(), st.GetAddress(), st.GetPort())
 			return
 		default:
 		}

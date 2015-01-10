@@ -1,9 +1,13 @@
 package mqtt
 
+import (
+	"crypto/tls"
+)
+
 ////////////////////Interface//////////////////////////////
 
 type Stack interface {
-	CreateTransport(network string, address string, port int) Transport
+	CreateTransport(network string, address string, port int, tlsc *tls.Config) Transport
 	GetTransports() []Transport
 	DeleteTransport(t Transport)
 
@@ -41,8 +45,8 @@ func newStack() Stack {
 	return this
 }
 
-func (this *stack) CreateTransport(network string, address string, port int) Transport {
-	t := newTransport(network, address, port)
+func (this *stack) CreateTransport(network string, address string, port int, tlsc *tls.Config) Transport {
+	t := newTransport(network, address, port, tlsc)
 
 	this.transports[t] = t
 
