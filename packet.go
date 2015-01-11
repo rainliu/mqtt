@@ -44,15 +44,6 @@ type Packet interface {
 	IParser
 	Parse([]byte) error
 
-	EncodingRemainingLength(X uint32) ([]byte, error)
-	DecodingRemainingLength([]byte) (uint32, uint32, error)
-
-	EncodingUTF8(U string) []byte
-	DecodingUTF8([]byte) (string, uint32, error)
-
-	EncodingBinary(B []byte) []byte
-	DecodingBinary([]byte) ([]byte, uint32, error)
-
 	//Fixed Header
 	GetType() PacketType
 	SetType(PacketType)

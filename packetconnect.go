@@ -55,8 +55,6 @@ type PacketConnect interface {
 type packet_connect struct {
 	packet
 
-	remainingLength uint32
-
 	//Variable Header
 	protocolName  string
 	protocolLevel byte
@@ -122,8 +120,8 @@ func (this *packet_connect) IBytize() []byte {
 	//Fixed Header
 	buffer.WriteByte((byte(this.packetType) << 4) | (this.packetFlag & 0x0F))
 	buf2 := buffer2.Bytes()
-	this.remainingLength = uint32(len(buf2))
-	x, _ := this.EncodingRemainingLength(this.remainingLength)
+	remainingLength := uint32(len(buf2))
+	x, _ := this.EncodingRemainingLength(remainingLength)
 	buffer.Write(x)
 
 	//Viariable Header + Payload
@@ -134,7 +132,7 @@ func (this *packet_connect) IBytize() []byte {
 
 func (this *packet_connect) IParse(buffer []byte) error {
 	var err error
-	var consumedBytes, utf8Bytes uint32
+	var remainingLength, consumedBytes, utf8Bytes uint32
 
 	if buffer == nil || len(buffer) < 12 {
 		return errors.New("Invalid Control Packet Size")
@@ -147,11 +145,11 @@ func (this *packet_connect) IParse(buffer []byte) error {
 	if packetFlag := buffer[0] & 0x0F; packetFlag != this.packetFlag {
 		return fmt.Errorf("Invalid Control Packet Flags %d\n", packetFlag)
 	}
-	if this.remainingLength, consumedBytes, err = this.DecodingRemainingLength(buffer[1:]); err != nil {
+	if remainingLength, consumedBytes, err = this.DecodingRemainingLength(buffer[1:]); err != nil {
 		return err
 	}
 	consumedBytes += 1
-	if len(buffer)-int(consumedBytes) < int(this.remainingLength) {
+	if len(buffer)-int(consumedBytes) < int(remainingLength) {
 		return errors.New("Invalid Control Packet Size")
 	}
 

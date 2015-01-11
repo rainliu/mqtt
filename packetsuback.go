@@ -25,9 +25,8 @@ type PacketSuback interface {
 type packet_suback struct {
 	packet
 
-	remainingLength uint32
-	packetId        uint16
-	returnCode      []byte
+	packetId   uint16
+	returnCode []byte
 }
 
 func NewPacketSuback() *packet_suback {
@@ -47,8 +46,8 @@ func (this *packet_suback) IBytize() []byte {
 
 	//Fixed Header
 	buffer.WriteByte((byte(this.packetType) << 4) | (this.packetFlag & 0x0F))
-	this.remainingLength = uint32(2 + len(this.returnCode))
-	x, _ := this.EncodingRemainingLength(this.remainingLength)
+	remainingLength := uint32(2 + len(this.returnCode))
+	x, _ := this.EncodingRemainingLength(remainingLength)
 	buffer.Write(x)
 
 	//Variable Header
@@ -63,7 +62,7 @@ func (this *packet_suback) IBytize() []byte {
 
 func (this *packet_suback) IParse(buffer []byte) error {
 	var err error
-	var consumedBytes uint32
+	var remainingLength, consumedBytes uint32
 
 	if buffer == nil || len(buffer) < 4 {
 		return errors.New("Invalid Control Packet Size")
@@ -76,11 +75,11 @@ func (this *packet_suback) IParse(buffer []byte) error {
 	if packetFlag := buffer[0] & 0x0F; packetFlag != this.packetFlag {
 		return fmt.Errorf("Invalid Control Packet Flags %d\n", packetFlag)
 	}
-	if this.remainingLength, consumedBytes, err = this.DecodingRemainingLength(buffer[1:]); err != nil {
+	if remainingLength, consumedBytes, err = this.DecodingRemainingLength(buffer[1:]); err != nil {
 		return err
 	}
 	consumedBytes += 1
-	if len(buffer)-int(consumedBytes) < int(this.remainingLength) {
+	if len(buffer)-int(consumedBytes) < int(remainingLength) {
 		return errors.New("Invalid Control Packet Size")
 	}
 
@@ -89,9 +88,9 @@ func (this *packet_suback) IParse(buffer []byte) error {
 	consumedBytes += 2
 
 	//Payload
-	this.returnCode = make([]byte, this.remainingLength-2)
-	copy(this.returnCode, buffer[consumedBytes:consumedBytes+this.remainingLength-2])
-	for i := 0; i < int(this.remainingLength-2); i++ {
+	this.returnCode = make([]byte, remainingLength-2)
+	copy(this.returnCode, buffer[consumedBytes:consumedBytes+remainingLength-2])
+	for i := 0; i < int(remainingLength-2); i++ {
 		if !(this.returnCode[i] <= 0x02 || this.returnCode[i] == 0x80) {
 			return fmt.Errorf("Invalid Control Packet %d-th Return Code %02x\n", i, this.returnCode[i])
 		}

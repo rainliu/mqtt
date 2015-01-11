@@ -28,10 +28,9 @@ type PacketSubscribe interface {
 type packet_subscribe struct {
 	packet
 
-	remainingLength uint32
-	packetId        uint16
-	topics          []string
-	qos             []QOS
+	packetId uint16
+	topics   []string
+	qos      []QOS
 }
 
 func NewPacketSubscribe() *packet_subscribe {
@@ -70,8 +69,8 @@ func (this *packet_subscribe) IBytize() []byte {
 	//Fixed Header
 	buffer.WriteByte((byte(this.packetType) << 4) | (this.packetFlag & 0x0F))
 	buf2 := buffer2.Bytes()
-	this.remainingLength = uint32(len(buf2))
-	x, _ := this.EncodingRemainingLength(this.remainingLength)
+	remainingLength := uint32(len(buf2))
+	x, _ := this.EncodingRemainingLength(remainingLength)
 	buffer.Write(x)
 
 	//Viariable Header + Payload
@@ -82,9 +81,7 @@ func (this *packet_subscribe) IBytize() []byte {
 
 func (this *packet_subscribe) IParse(buffer []byte) error {
 	var err error
-	var bufferLength uint32
-	var consumedBytes uint32
-	var topicLength uint32
+	var bufferLength, remainingLength, consumedBytes, topicLength uint32
 
 	bufferLength = uint32(len(buffer))
 
@@ -99,11 +96,11 @@ func (this *packet_subscribe) IParse(buffer []byte) error {
 	if packetFlag := buffer[0] & 0x0F; packetFlag != this.packetFlag {
 		return fmt.Errorf("Invalid Control Packet Flags %d\n", packetFlag)
 	}
-	if this.remainingLength, consumedBytes, err = this.DecodingRemainingLength(buffer[1:]); err != nil {
+	if remainingLength, consumedBytes, err = this.DecodingRemainingLength(buffer[1:]); err != nil {
 		return err
 	}
 	consumedBytes += 1
-	if bufferLength < consumedBytes+this.remainingLength {
+	if bufferLength < consumedBytes+remainingLength {
 		return errors.New("Invalid Control Packet Size")
 	}
 

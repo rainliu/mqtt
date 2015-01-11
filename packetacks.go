@@ -7,44 +7,33 @@ import (
 )
 
 ////////////////////Interface//////////////////////////////
-type PacketPuback interface {
+
+type PacketAcks interface {
 	Packet
 
 	//Variable Header
 	GetPacketId() uint16
 	SetPacketId(id uint16)
+}
+
+type PacketPuback interface {
+	PacketAcks
 }
 
 type PacketPubrec interface {
-	Packet
-
-	//Variable Header
-	GetPacketId() uint16
-	SetPacketId(id uint16)
+	PacketAcks
 }
 
 type PacketPubrel interface {
-	Packet
-
-	//Variable Header
-	GetPacketId() uint16
-	SetPacketId(id uint16)
+	PacketAcks
 }
 
 type PacketPubcomp interface {
-	Packet
-
-	//Variable Header
-	GetPacketId() uint16
-	SetPacketId(id uint16)
+	PacketAcks
 }
 
 type PacketUnsuback interface {
-	Packet
-
-	//Variable Header
-	GetPacketId() uint16
-	SetPacketId(id uint16)
+	PacketAcks
 }
 
 ////////////////////Implementation////////////////////////

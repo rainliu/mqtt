@@ -25,9 +25,8 @@ type PacketPublish interface {
 type packet_publish struct {
 	packet
 
-	remainingLength uint32
-	packetId        uint16
-	message         Message
+	packetId uint16
+	message  Message
 }
 
 func NewPacketPublish() *packet_publish {
@@ -73,8 +72,8 @@ func (this *packet_publish) IBytize() []byte {
 
 	buffer.WriteByte((byte(this.packetType) << 4) | (this.packetFlag & 0x0F))
 	buf2 := buffer2.Bytes()
-	this.remainingLength = uint32(len(buf2))
-	x, _ := this.EncodingRemainingLength(this.remainingLength)
+	remainingLength := uint32(len(buf2))
+	x, _ := this.EncodingRemainingLength(remainingLength)
 	buffer.Write(x)
 
 	//Viariable Header + Payload
@@ -85,8 +84,7 @@ func (this *packet_publish) IBytize() []byte {
 
 func (this *packet_publish) IParse(buffer []byte) error {
 	var err error
-	var bufferLength uint32
-	var consumedBytes uint32
+	var bufferLength, remainingLength, consumedBytes uint32
 
 	var dup bool
 	var qos QOS
@@ -120,10 +118,10 @@ func (this *packet_publish) IParse(buffer []byte) error {
 		retain = false
 	}
 
-	if this.remainingLength, consumedBytes, err = this.DecodingRemainingLength(buffer[1:]); err != nil {
+	if remainingLength, consumedBytes, err = this.DecodingRemainingLength(buffer[1:]); err != nil {
 		return err
 	}
-	if consumedBytes += 1; bufferLength < consumedBytes+this.remainingLength {
+	if consumedBytes += 1; bufferLength < consumedBytes+remainingLength {
 		return errors.New("Invalid Control Packet Size")
 	}
 
