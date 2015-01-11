@@ -171,17 +171,17 @@ func (this *packet) Bytes() []byte {
 
 func (this *packet) IParse(buffer []byte) error {
 	if buffer == nil || len(buffer) != 2 {
-		return errors.New("Invalid Control Packet Size")
+		return fmt.Errorf("Invalid Control Packet Size %x\n", len(buffer))
 	}
 
 	if packetType := PacketType((buffer[0] >> 4) & 0x0F); packetType != this.packetType {
-		return fmt.Errorf("Invalid Control Packet Type %d\n", packetType)
+		return fmt.Errorf("Invalid Control Packet Type %x\n", packetType)
 	}
 	if packetFlag := buffer[0] & 0x0F; packetFlag != this.packetFlag {
-		return fmt.Errorf("Invalid Control Packet Flags %d\n", packetFlag)
+		return fmt.Errorf("Invalid Control Packet Flags %x\n", packetFlag)
 	}
 	if buffer[1] != 0 {
-		return fmt.Errorf("Invalid Control Packet Remaining Length %d\n", buffer[1])
+		return fmt.Errorf("Invalid Control Packet Remaining Length %x\n", buffer[1])
 	}
 
 	return nil
