@@ -18,8 +18,8 @@ type PacketSubscribe interface {
 	GetSubscribeTopics() []string
 	SetSubscribeTopics([]string)
 
-	GetQos() []QOS
-	SetQos([]QOS)
+	GetQoSs() []QOS
+	SetQoSs([]QOS)
 }
 
 ////////////////////Implementation////////////////////////
@@ -152,9 +152,9 @@ func (this *packet_subscribe) SetSubscribeTopics(topics []string) {
 	this.topics = topics
 }
 
-func (this *packet_subscribe) GetQos() []QOS {
+func (this *packet_subscribe) GetQoSs() []QOS {
 	return this.qos
 }
-func (this *packet_subscribe) SetQos(qos []QOS) {
+func (this *packet_subscribe) SetQoSs(qos []QOS) {
 	this.qos = qos
 }

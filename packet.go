@@ -48,8 +48,8 @@ type Packet interface {
 	GetType() PacketType
 	SetType(PacketType)
 
-	GetFlags() byte
-	SetFlags(byte)
+	GetFlag() byte
+	SetFlag(byte)
 }
 
 type PacketPingreq interface {
@@ -280,9 +280,9 @@ func (this *packet) SetType(pt PacketType) {
 	this.packetType = pt
 }
 
-func (this *packet) GetFlags() byte {
+func (this *packet) GetFlag() byte {
 	return this.packetFlag
 }
-func (this *packet) SetFlags(pf byte) {
+func (this *packet) SetFlag(pf byte) {
 	this.packetFlag = pf
 }

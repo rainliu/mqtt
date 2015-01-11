@@ -15,8 +15,8 @@ type PacketSuback interface {
 	SetPacketId(id uint16)
 
 	//Payload
-	GetReturnCode() []byte
-	SetReturnCode([]byte)
+	GetReturnCodes() []byte
+	SetReturnCodes([]byte)
 }
 
 ////////////////////Implementation////////////////////////
@@ -24,8 +24,8 @@ type PacketSuback interface {
 type packet_suback struct {
 	packet
 
-	packetId   uint16
-	returnCode []byte
+	packetId    uint16
+	returnCodes []byte
 }
 
 func NewPacketSuback() *packet_suback {
@@ -45,7 +45,7 @@ func (this *packet_suback) IBytize() []byte {
 
 	//Fixed Header
 	buffer.WriteByte((byte(this.packetType) << 4) | (this.packetFlag & 0x0F))
-	remainingLength := uint32(2 + len(this.returnCode))
+	remainingLength := uint32(2 + len(this.returnCodes))
 	x, _ := this.EncodingRemainingLength(remainingLength)
 	buffer.Write(x)
 
@@ -54,7 +54,7 @@ func (this *packet_suback) IBytize() []byte {
 	buffer.WriteByte(byte(this.packetId & 0xFF))
 
 	//Payload
-	buffer.Write(this.returnCode)
+	buffer.Write(this.returnCodes)
 
 	return buffer.Bytes()
 }
@@ -87,11 +87,11 @@ func (this *packet_suback) IParse(buffer []byte) error {
 	consumedBytes += 2
 
 	//Payload
-	this.returnCode = make([]byte, remainingLength-2)
-	copy(this.returnCode, buffer[consumedBytes:consumedBytes+remainingLength-2])
+	this.returnCodes = make([]byte, remainingLength-2)
+	copy(this.returnCodes, buffer[consumedBytes:consumedBytes+remainingLength-2])
 	for i := 0; i < int(remainingLength-2); i++ {
-		if !(this.returnCode[i] <= 0x02 || this.returnCode[i] == 0x80) {
-			return fmt.Errorf("Invalid %x Control Packet Return Code %02x\n", this.packetType, this.returnCode[i])
+		if !(this.returnCodes[i] <= 0x02 || this.returnCodes[i] == 0x80) {
+			return fmt.Errorf("Invalid %x Control Packet Return Code %02x\n", this.packetType, this.returnCodes[i])
 		}
 	}
 
@@ -107,10 +107,10 @@ func (this *packet_suback) SetPacketId(id uint16) {
 }
 
 //Payload
-func (this *packet_suback) GetReturnCode() []byte {
-	return this.returnCode
+func (this *packet_suback) GetReturnCodes() []byte {
+	return this.returnCodes
 }
-func (this *packet_suback) SetReturnCode(returnCode []byte) {
-	this.returnCode = make([]byte, len(returnCode))
-	copy(this.returnCode, returnCode)
+func (this *packet_suback) SetReturnCodes(returnCodes []byte) {
+	this.returnCodes = make([]byte, len(returnCodes))
+	copy(this.returnCodes, returnCodes)
 }
