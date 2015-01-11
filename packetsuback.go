@@ -65,7 +65,7 @@ func (this *packet_suback) IParse(buffer []byte) error {
 
 	bufferLength = uint32(len(buffer))
 
-	if buffer == nil || bufferLength < 4 {
+	if buffer == nil || bufferLength < 5 {
 		return fmt.Errorf("Invalid %x Control Packet Size %x\n", this.packetType, bufferLength)
 	}
 
@@ -87,7 +87,9 @@ func (this *packet_suback) IParse(buffer []byte) error {
 
 	//Variable Header
 	this.packetId = ((uint16(buffer[consumedBytes])) << 8) | uint16(buffer[consumedBytes+1])
-	consumedBytes += 2
+	if consumedBytes += 2; bufferLength < consumedBytes+1 {
+		return fmt.Errorf("Invalid %x Control Packet Must Have at least One Return Code\n", this.packetType)
+	}
 
 	//Payload
 	this.returnCodes = make([]byte, remainingLength-2)

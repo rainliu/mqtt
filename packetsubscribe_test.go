@@ -24,7 +24,7 @@ func TestPacketSubscribe(t *testing.T) {
 		t.Errorf("Mismatch length %x vs %x\n", len(input), len(output))
 	}
 
-	invalids := [][]byte{{0xA2},
+	invalids := [][]byte{{0x82},
 		{0x82, 0x08},
 		{0x82, 0x08, 0x01},
 		{0x82, 0x08, 0x01, 0xF0},
