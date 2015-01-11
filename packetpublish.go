@@ -92,7 +92,7 @@ func (this *packet_publish) IParse(buffer []byte) error {
 	var content string
 
 	bufferLength = uint32(len(buffer))
-	if buffer == nil || bufferLength < 4 {
+	if buffer == nil || bufferLength < 7 {
 		return fmt.Errorf("Invalid %x Control Packet Size %x\n", this.packetType, bufferLength)
 	}
 
@@ -121,15 +121,15 @@ func (this *packet_publish) IParse(buffer []byte) error {
 		return err
 	}
 	if consumedBytes += 1; bufferLength < consumedBytes+remainingLength {
-		return fmt.Errorf("Invalid %x Control Packet Remaining Length\n", this.packetType, remainingLength)
+		return fmt.Errorf("Invalid %x Control Packet Remaining Length %x\n", this.packetType, remainingLength)
 	}
 	buffer = buffer[:consumedBytes+remainingLength]
 	bufferLength = consumedBytes + remainingLength
 
 	//Variable Header
 	topicLength := ((uint32(buffer[consumedBytes])) << 8) | uint32(buffer[consumedBytes+1])
-	if consumedBytes += 2; bufferLength < consumedBytes+topicLength {
-		return fmt.Errorf("Invalid %x Control Packet Topic Length\n", this.packetType, topicLength)
+	if consumedBytes += 2; bufferLength < consumedBytes+topicLength || topicLength == 0 {
+		return fmt.Errorf("Invalid %x Control Packet Topic Length %x\n", this.packetType, topicLength)
 	}
 
 	topic = string(buffer[consumedBytes : consumedBytes+topicLength])

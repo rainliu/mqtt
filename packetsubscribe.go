@@ -115,7 +115,7 @@ func (this *packet_subscribe) IParse(buffer []byte) error {
 	this.qos = nil
 	for bufferLength > consumedBytes {
 		topicLength = ((uint32(buffer[consumedBytes])) << 8) | uint32(buffer[consumedBytes+1])
-		if consumedBytes += 2; bufferLength < consumedBytes+topicLength {
+		if consumedBytes += 2; bufferLength < consumedBytes+topicLength || topicLength == 0 {
 			return fmt.Errorf("Invalid %x Control Packet Topic Length %x\n", this.packetType, topicLength)
 		}
 
