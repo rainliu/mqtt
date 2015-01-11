@@ -77,7 +77,7 @@ func (this *packet_suback) IParse(buffer []byte) error {
 		return fmt.Errorf("Invalid %x Control Packet Flags %x\n", this.packetType, packetFlag)
 	}
 	if remainingLength, consumedBytes, err = this.DecodingRemainingLength(buffer[1:]); err != nil {
-		return err
+		return fmt.Errorf("Invalid %x Control Packet DecodingRemainingLength %s\n", this.packetType, err.Error())
 	}
 	if consumedBytes += 1; bufferLength < consumedBytes+remainingLength {
 		return fmt.Errorf("Invalid %x Control Packet Remaining Length %x\n", this.packetType, remainingLength)

@@ -147,7 +147,7 @@ func (this *packet_connect) IParse(buffer []byte) error {
 		return fmt.Errorf("Invalid %x Control Packet Flags %x\n", this.packetType, packetFlag)
 	}
 	if remainingLength, consumedBytes, err = this.DecodingRemainingLength(buffer[1:]); err != nil {
-		return err
+		return fmt.Errorf("Invalid %x Control Packet DecodingRemainingLength %s\n", this.packetType, err.Error())
 	}
 	if consumedBytes += 1; bufferLength < consumedBytes+remainingLength {
 		return fmt.Errorf("Invalid %x Control Packet Remaining Length %x\n", this.packetType, remainingLength)
@@ -172,19 +172,19 @@ func (this *packet_connect) IParse(buffer []byte) error {
 
 	//Payload
 	if this.clientId, utf8Bytes, err = this.DecodingUTF8(buffer[consumedBytes:]); err != nil {
-		return err
+		return fmt.Errorf("Invalid %x Control Packet DecodingUTF8 %s\n", this.packetType, err.Error())
 	}
 	consumedBytes += utf8Bytes
 
 	//Will Flag bit 2
 	if (this.connectFlags & CONNECT_FLAG_WILL_FLAG) != 0 {
 		if this.willTopic, utf8Bytes, err = this.DecodingUTF8(buffer[consumedBytes:]); err != nil {
-			return err
+			return fmt.Errorf("Invalid %x Control Packet DecodingUTF8 %s\n", this.packetType, err.Error())
 		}
 		consumedBytes += utf8Bytes
 
 		if this.willMessage, utf8Bytes, err = this.DecodingUTF8(buffer[consumedBytes:]); err != nil {
-			return err
+			return fmt.Errorf("Invalid %x Control Packet DecodingUTF8 %s\n", this.packetType, err.Error())
 		}
 		consumedBytes += utf8Bytes
 	}
@@ -192,7 +192,7 @@ func (this *packet_connect) IParse(buffer []byte) error {
 	//UserName Flag bit 7
 	if (this.connectFlags & CONNECT_FLAG_USERNAME_FLAG) != 0 {
 		if this.userName, utf8Bytes, err = this.DecodingUTF8(buffer[consumedBytes:]); err != nil {
-			return err
+			return fmt.Errorf("Invalid %x Control Packet DecodingUTF8 %s\n", this.packetType, err.Error())
 		}
 		consumedBytes += utf8Bytes
 	}
@@ -200,7 +200,7 @@ func (this *packet_connect) IParse(buffer []byte) error {
 	//Password Flag bit 6
 	if (this.connectFlags & CONNECT_FLAG_PASSWORD_FLAG) != 0 {
 		if this.password, utf8Bytes, err = this.DecodingBinary(buffer[consumedBytes:]); err != nil {
-			return err
+			return fmt.Errorf("Invalid %x Control Packet DecodingBinary %s\n", this.packetType, err.Error())
 		}
 		consumedBytes += utf8Bytes
 	}
