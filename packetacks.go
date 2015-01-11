@@ -2,7 +2,6 @@ package mqtt
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 )
 
@@ -77,17 +76,17 @@ func (this *packet_acks) IBytize() []byte {
 
 func (this *packet_acks) IParse(buffer []byte) error {
 	if buffer == nil || len(buffer) != 4 {
-		return errors.New("Invalid Control Packet Size")
+		return fmt.Errorf("Invalid %x Control Packet Size %x\n", this.packetType, len(buffer))
 	}
 
 	if packetType := PacketType((buffer[0] >> 4) & 0x0F); packetType != this.packetType {
-		return fmt.Errorf("Invalid Control Packet Type %d\n", packetType)
+		return fmt.Errorf("Invalid %x Control Packet Type %x\n", this.packetType, packetType)
 	}
 	if packetFlag := buffer[0] & 0x0F; packetFlag != this.packetFlag {
-		return fmt.Errorf("Invalid Control Packet Flags %d\n", packetFlag)
+		return fmt.Errorf("Invalid %x Control Packet Flags %x\n", this.packetType, packetFlag)
 	}
 	if buffer[1] != 2 {
-		return fmt.Errorf("Invalid Control Packet Remaining Length %d\n", buffer[1])
+		return fmt.Errorf("Invalid %x Control Packet Remaining Length %x\n", this.packetType, buffer[1])
 	}
 
 	this.packetId = ((uint16(buffer[2])) << 8) | uint16(buffer[3])
