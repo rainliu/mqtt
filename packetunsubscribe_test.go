@@ -10,6 +10,7 @@ func TestPacketUnsubscribe(t *testing.T) {
 	pkt := NewPacketUnsubscribe()
 	if err := pkt.Parse(input); err != nil {
 		t.Errorf(err.Error())
+		return
 	}
 
 	output := pkt.Bytes()

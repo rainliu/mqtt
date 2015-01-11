@@ -10,6 +10,7 @@ func TestPacketAcks(t *testing.T) {
 	pkt := NewPacketAcks(PACKET_UNSUBACK)
 	if err := pkt.Parse(input); err != nil {
 		t.Errorf(err.Error())
+		return
 	}
 
 	output := pkt.Bytes()

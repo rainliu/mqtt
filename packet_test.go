@@ -10,6 +10,7 @@ func TestPacketPingreq(t *testing.T) {
 	pkt := NewPacket(PACKET_PINGREQ)
 	if err := pkt.Parse(input); err != nil {
 		t.Errorf(err.Error())
+		return
 	}
 
 	output := pkt.Bytes()

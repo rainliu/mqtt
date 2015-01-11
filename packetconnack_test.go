@@ -10,6 +10,7 @@ func TestPacketConnack(t *testing.T) {
 	pkt := NewPacketConnack()
 	if err := pkt.Parse(input); err != nil {
 		t.Errorf(err.Error())
+		return
 	}
 
 	output := pkt.Bytes()
