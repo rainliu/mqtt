@@ -61,10 +61,12 @@ func (this *packet_suback) IBytize() []byte {
 
 func (this *packet_suback) IParse(buffer []byte) error {
 	var err error
-	var remainingLength, consumedBytes uint32
+	var bufferLength, remainingLength, consumedBytes uint32
 
-	if buffer == nil || len(buffer) < 4 {
-		return fmt.Errorf("Invalid %x Control Packet Size %x\n", this.packetType, len(buffer))
+	bufferLength = uint32(len(buffer))
+
+	if buffer == nil || bufferLength < 4 {
+		return fmt.Errorf("Invalid %x Control Packet Size %x\n", this.packetType, bufferLength)
 	}
 
 	//Fixed Header
@@ -77,10 +79,11 @@ func (this *packet_suback) IParse(buffer []byte) error {
 	if remainingLength, consumedBytes, err = this.DecodingRemainingLength(buffer[1:]); err != nil {
 		return err
 	}
-	consumedBytes += 1
-	if len(buffer)-int(consumedBytes) < int(remainingLength) {
+	if consumedBytes += 1; bufferLength < consumedBytes+remainingLength {
 		return fmt.Errorf("Invalid %x Control Packet Remaining Length %x\n", this.packetType, remainingLength)
 	}
+	buffer = buffer[:consumedBytes+remainingLength]
+	bufferLength = consumedBytes + remainingLength
 
 	//Variable Header
 	this.packetId = ((uint16(buffer[consumedBytes])) << 8) | uint16(buffer[consumedBytes+1])

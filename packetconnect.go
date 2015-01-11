@@ -131,10 +131,12 @@ func (this *packet_connect) IBytize() []byte {
 
 func (this *packet_connect) IParse(buffer []byte) error {
 	var err error
-	var remainingLength, consumedBytes, utf8Bytes uint32
+	var bufferLength, remainingLength, consumedBytes, utf8Bytes uint32
 
-	if buffer == nil || len(buffer) < 12 {
-		return fmt.Errorf("Invalid %x Control Packet Size %x\n", this.packetType, len(buffer))
+	bufferLength = uint32(len(buffer))
+
+	if buffer == nil || bufferLength < 12 {
+		return fmt.Errorf("Invalid %x Control Packet Size %x\n", this.packetType, bufferLength)
 	}
 
 	//Fixed Header
@@ -147,10 +149,11 @@ func (this *packet_connect) IParse(buffer []byte) error {
 	if remainingLength, consumedBytes, err = this.DecodingRemainingLength(buffer[1:]); err != nil {
 		return err
 	}
-	consumedBytes += 1
-	if len(buffer)-int(consumedBytes) < int(remainingLength) {
+	if consumedBytes += 1; bufferLength < consumedBytes+remainingLength {
 		return fmt.Errorf("Invalid %x Control Packet Remaining Length %x\n", this.packetType, remainingLength)
 	}
+	buffer = buffer[:consumedBytes+remainingLength]
+	bufferLength = consumedBytes + remainingLength
 
 	//Variable Header
 	protocolLength := ((uint32(buffer[consumedBytes])) << 8) | uint32(buffer[consumedBytes+1])

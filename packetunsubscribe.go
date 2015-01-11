@@ -93,24 +93,26 @@ func (this *packet_unsubscribe) IParse(buffer []byte) error {
 	if remainingLength, consumedBytes, err = this.DecodingRemainingLength(buffer[1:]); err != nil {
 		return err
 	}
-	consumedBytes += 1
-	if bufferLength < consumedBytes+remainingLength {
+	if consumedBytes += 1; bufferLength < consumedBytes+remainingLength {
 		return fmt.Errorf("Invalid %x Control Packet Remaining Length %x\n", this.packetType, remainingLength)
 	}
+	buffer = buffer[:consumedBytes+remainingLength]
+	bufferLength = consumedBytes + remainingLength
 
 	//Variable Header
 	this.packetId = ((uint16(buffer[consumedBytes])) << 8) | uint16(buffer[consumedBytes+1])
-	consumedBytes += 2
-	if bufferLength < consumedBytes+3 {
-		return fmt.Errorf("Invalid %x Control Packet Payload Length\n", this.packetType)
+	if consumedBytes += 2; bufferLength < consumedBytes+3 {
+		return fmt.Errorf("Invalid %x Control Packet Must Have at least One Topic\n", this.packetType)
 	}
 
 	//Payload
 	this.topics = nil
 	for bufferLength > consumedBytes {
+		if bufferLength < consumedBytes+3 {
+			return fmt.Errorf("Invalid %x Control Packet Payload Length\n", this.packetType)
+		}
 		topicLength = ((uint32(buffer[consumedBytes])) << 8) | uint32(buffer[consumedBytes+1])
-		consumedBytes += 2
-		if bufferLength < consumedBytes+topicLength {
+		if consumedBytes += 2; bufferLength < consumedBytes+topicLength {
 			return fmt.Errorf("Invalid %x Control Packet Topic Length\n", this.packetType)
 		}
 

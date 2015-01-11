@@ -123,6 +123,8 @@ func (this *packet_publish) IParse(buffer []byte) error {
 	if consumedBytes += 1; bufferLength < consumedBytes+remainingLength {
 		return fmt.Errorf("Invalid %x Control Packet Remaining Length\n", this.packetType, remainingLength)
 	}
+	buffer = buffer[:consumedBytes+remainingLength]
+	bufferLength = consumedBytes + remainingLength
 
 	//Variable Header
 	topicLength := ((uint32(buffer[consumedBytes])) << 8) | uint32(buffer[consumedBytes+1])
