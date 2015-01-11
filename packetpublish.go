@@ -51,8 +51,11 @@ func (this *packet_publish) IBytize() []byte {
 	buffer2.WriteByte(byte(topicLength >> 8))
 	buffer2.WriteByte(byte(topicLength & 0xFF))
 	buffer2.WriteString(this.message.GetTopic())
-	buffer2.WriteByte(byte(this.packetId >> 8))
-	buffer2.WriteByte(byte(this.packetId & 0xFF))
+
+	if this.message.GetQos() != QOS_ZERO {
+		buffer2.WriteByte(byte(this.packetId >> 8))
+		buffer2.WriteByte(byte(this.packetId & 0xFF))
+	}
 
 	//Payload
 	buffer2.WriteString(this.message.GetContent())
@@ -92,7 +95,7 @@ func (this *packet_publish) IParse(buffer []byte) error {
 	var content string
 
 	bufferLength = uint32(len(buffer))
-	if buffer == nil || bufferLength < 7 {
+	if buffer == nil || bufferLength < 5 {
 		return fmt.Errorf("Invalid %x Control Packet Size %x\n", this.packetType, bufferLength)
 	}
 
@@ -133,12 +136,18 @@ func (this *packet_publish) IParse(buffer []byte) error {
 	}
 
 	topic = string(buffer[consumedBytes : consumedBytes+topicLength])
-	if consumedBytes += topicLength; bufferLength < consumedBytes+2 {
-		return fmt.Errorf("Invalid %x Control Packet PacketId Length\n", this.packetType)
+	consumedBytes += topicLength
+
+	if qos != QOS_ZERO {
+		if bufferLength < consumedBytes+2 {
+			return fmt.Errorf("Invalid %x Control Packet PacketId Length\n", this.packetType)
+		}
+
+		this.packetId = ((uint16(buffer[consumedBytes])) << 8) | uint16(buffer[consumedBytes+1])
+		consumedBytes += 2
 	}
 
-	this.packetId = ((uint16(buffer[consumedBytes])) << 8) | uint16(buffer[consumedBytes+1])
-	if consumedBytes += 2; bufferLength < consumedBytes {
+	if bufferLength < consumedBytes {
 		return fmt.Errorf("Invalid %x Control Packet Payload Length\n", this.packetType)
 	}
 
