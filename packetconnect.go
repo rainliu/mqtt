@@ -2,7 +2,6 @@ package mqtt
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 )
 
@@ -135,22 +134,22 @@ func (this *packet_connect) IParse(buffer []byte) error {
 	var remainingLength, consumedBytes, utf8Bytes uint32
 
 	if buffer == nil || len(buffer) < 12 {
-		return errors.New("Invalid Control Packet Size")
+		return fmt.Errorf("Invalid %x Control Packet Size %x\n", this.packetType, len(buffer))
 	}
 
 	//Fixed Header
 	if packetType := PacketType((buffer[0] >> 4) & 0x0F); packetType != this.packetType {
-		return fmt.Errorf("Invalid Control Packet Type %d\n", packetType)
+		return fmt.Errorf("Invalid %x Control Packet Type %x\n", this.packetType, packetType)
 	}
 	if packetFlag := buffer[0] & 0x0F; packetFlag != this.packetFlag {
-		return fmt.Errorf("Invalid Control Packet Flags %d\n", packetFlag)
+		return fmt.Errorf("Invalid %x Control Packet Flags %x\n", this.packetType, packetFlag)
 	}
 	if remainingLength, consumedBytes, err = this.DecodingRemainingLength(buffer[1:]); err != nil {
 		return err
 	}
 	consumedBytes += 1
 	if len(buffer)-int(consumedBytes) < int(remainingLength) {
-		return errors.New("Invalid Control Packet Size")
+		return fmt.Errorf("Invalid %x Control Packet Remaining Length %x\n", this.packetType, remainingLength)
 	}
 
 	//Variable Header

@@ -2,7 +2,6 @@ package mqtt
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 )
 
@@ -94,16 +93,16 @@ func (this *packet_publish) IParse(buffer []byte) error {
 
 	bufferLength = uint32(len(buffer))
 	if buffer == nil || bufferLength < 4 {
-		return errors.New("Invalid Control Packet Size")
+		return fmt.Errorf("Invalid %x Control Packet Size %x\n", this.packetType, bufferLength)
 	}
 
 	//Fixed Header
 	if packetType := PacketType((buffer[0] >> 4) & 0x0F); packetType != this.packetType {
-		return fmt.Errorf("Invalid Control Packet Type %d\n", packetType)
+		return fmt.Errorf("Invalid %x Control Packet Type %x\n", this.packetType, packetType)
 	}
 	this.packetFlag = buffer[0] & 0x0F
 	if (buffer[0]>>1)&0x03 == 0x03 {
-		return errors.New("Invalid Control Packet QoS level")
+		return fmt.Errorf("Invalid %x Control Packet QoS level %x\n", this.packetType, 0x03)
 	} else {
 		qos = QOS((buffer[0] >> 1) & 0x03)
 	}
@@ -122,23 +121,23 @@ func (this *packet_publish) IParse(buffer []byte) error {
 		return err
 	}
 	if consumedBytes += 1; bufferLength < consumedBytes+remainingLength {
-		return errors.New("Invalid Control Packet Size")
+		return fmt.Errorf("Invalid %x Control Packet Remaining Length\n", this.packetType, remainingLength)
 	}
 
 	//Variable Header
 	topicLength := ((uint32(buffer[consumedBytes])) << 8) | uint32(buffer[consumedBytes+1])
 	if consumedBytes += 2; bufferLength < consumedBytes+topicLength {
-		return errors.New("Invalid Control Packet Size")
+		return fmt.Errorf("Invalid %x Control Packet Topic Length\n", this.packetType, topicLength)
 	}
 
 	topic = string(buffer[consumedBytes : consumedBytes+topicLength])
 	if consumedBytes += topicLength; bufferLength < consumedBytes+2 {
-		return errors.New("Invalid Control Packet Size")
+		return fmt.Errorf("Invalid %x Control Packet PacketId Length\n", this.packetType)
 	}
 
 	this.packetId = ((uint16(buffer[consumedBytes])) << 8) | uint16(buffer[consumedBytes+1])
 	if consumedBytes += 2; bufferLength < consumedBytes {
-		return errors.New("Invalid Control Packet Size")
+		return fmt.Errorf("Invalid %x Control Packet Payload Length\n", this.packetType)
 	}
 
 	//Payload
