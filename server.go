@@ -49,10 +49,39 @@ func (this *serverSession) Forward(msg Message) error {
 	return err
 }
 
-func (this *serverSession) Process(pkt []byte) Event {
+func (this *serverSession) Process(buf []byte) Event {
+	pkt, err := Packetize(buf)
+	if err != nil && this.state != SESSION_STATE_TERMINATED {
+		this.state = SESSION_STATE_TERMINATED
+		return newEventIOException(this, this.conn.RemoteAddr())
+	}
+
 	switch this.state {
 	case SESSION_STATE_CREATED:
-	case SESSION_STATE_ACTIVE:
+		switch pkt.GetType() {
+		case PACKET_CONNECT:
+			this.state = SESSION_STATE_CONNECT
+			return newEventConnect(this, pkt.(PacketConnect))
+		default:
+			this.state = SESSION_STATE_TERMINATED
+		}
+	case SESSION_STATE_CONNECT:
+		switch pkt.GetType() {
+		case PACKET_CONNECT:
+			this.state = SESSION_STATE_TERMINATED
+		case PACKET_PUBLISH:
+			if pkt.(PacketPublish).GetMessage().GetQos() != QOS_ZERO {
+				this.state = SESSION_STATE_PUBLISH
+			}
+			return newEventPublish(this, pkt.(PacketPublish).GetMessage())
+		case PACKET_SUBSCRIBE:
+		case PACKET_UNSUBSCRIBE:
+		case PACKET_DISCONNECT:
+			this.state = SESSION_STATE_TERMINATED
+		default:
+		}
+	case SESSION_STATE_PUBLISH:
+
 	case SESSION_STATE_TERMINATED:
 	default:
 	}

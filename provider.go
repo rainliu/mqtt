@@ -98,16 +98,6 @@ func (this *provider) DeleteClientSession(cs ClientSession) {
 	delete(this.clientSessions, cs)
 }
 
-func (this *provider) Forward(msg Message) {
-	for _, ss := range this.serverSessions {
-		if err := ss.Forward(msg); err != nil {
-			for _, ln := range this.listeners {
-				ln.ProcessIOException(newEventIOException(EVENT_IOEXCEPTION, ss, ss.conn.RemoteAddr()))
-			}
-		}
-	}
-}
-
 func (this *provider) Run() {
 	for _, st := range this.serverTransports {
 		if err := st.Listen(); err != nil {
@@ -163,7 +153,7 @@ func (this *provider) ServeConn(conn net.Conn) {
 		ln.ProcessSessionCreated(newEventSession(EVENT_SESSION_CREATED, ss, "New Connection Coming"))
 	}
 
-	var pkt []byte
+	var buf []byte
 	var err error
 	for {
 		select {
@@ -173,16 +163,17 @@ func (this *provider) ServeConn(conn net.Conn) {
 		default:
 		}
 		conn.SetDeadline(time.Now().Add(1e9))
-		if pkt, err = ioutil.ReadAll(conn); err != nil {
+		if buf, err = ioutil.ReadAll(conn); err != nil {
 			if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
 				continue
 			}
 			log.Println(err)
 			for _, ln := range this.listeners {
-				ln.ProcessIOException(newEventIOException(EVENT_IOEXCEPTION, ss, conn.RemoteAddr()))
+				ln.ProcessIOException(newEventIOException(ss, conn.RemoteAddr()))
 			}
+			ss.Terminate(err)
 		} else {
-			if evt := ss.Process(pkt); evt != nil {
+			if evt := ss.Process(buf); evt != nil {
 				switch evt.GetEventType() {
 				case EVENT_CONNECT:
 					for _, ln := range this.listeners {
@@ -208,6 +199,7 @@ func (this *provider) ServeConn(conn net.Conn) {
 					for _, ln := range this.listeners {
 						ln.ProcessIOException(evt.(EventIOException))
 					}
+					ss.Terminate(err)
 				default:
 				}
 			}
@@ -218,4 +210,15 @@ func (this *provider) ServeConn(conn net.Conn) {
 		ln.ProcessSessionTerminated(newEventSession(EVENT_SESSION_TERMINATED, ss, ss.Error()))
 	}
 	delete(this.serverSessions, ss)
+}
+
+func (this *provider) Forward(msg Message) {
+	for _, ss := range this.serverSessions {
+		if err := ss.Forward(msg); err != nil {
+			log.Println(err)
+			for _, ln := range this.listeners {
+				ln.ProcessIOException(newEventIOException(ss, ss.conn.RemoteAddr()))
+			}
+		}
+	}
 }

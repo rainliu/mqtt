@@ -31,6 +31,18 @@ type Event interface {
 	GetSession() Session
 }
 
+type EventSessionCreated interface {
+	Event
+
+	GetReason() string
+}
+
+type EventSessionTerminated interface {
+	Event
+
+	GetReason() string
+}
+
 type EventConnect interface {
 	Event
 
@@ -62,18 +74,6 @@ type EventUnsubscribe interface {
 	GetUnsubscribeTopics() []string
 }
 
-type EventSessionCreated interface {
-	Event
-
-	GetReason() string
-}
-
-type EventSessionTerminated interface {
-	Event
-
-	GetReason() string
-}
-
 type EventTimeout interface {
 	Event
 
@@ -87,6 +87,7 @@ type EventIOException interface {
 }
 
 ////////////////////Implementation////////////////////////
+
 type event struct {
 	eventType EventType
 	session   Session
@@ -124,17 +125,144 @@ func (this *event_session) GetReason() string {
 	return this.reason
 }
 
+type event_connect struct {
+	event
+
+	connectFlags byte
+	keepAlive    uint16
+	clientId     string
+	willTopic    string
+	willMessage  string
+	userName     string
+	password     []byte
+}
+
+func newEventConnect(s Session, p PacketConnect) *event_connect {
+	this := &event_connect{}
+
+	this.eventType = EVENT_CONNECT
+	this.session = s
+
+	this.connectFlags = p.GetConnectFlags()
+	this.keepAlive = p.GetKeepAlive()
+	this.clientId = p.GetClientId()
+	this.willTopic = p.GetWillTopic()
+	this.willMessage = p.GetWillMessage()
+	this.userName = p.GetUserName()
+	this.password = p.GetPassword()
+
+	return this
+}
+
+func (this *event_connect) GetConnectFlags() byte {
+	return this.connectFlags
+}
+
+func (this *event_connect) GetKeepAlive() uint16 {
+	return this.keepAlive
+}
+
+func (this *event_connect) GetClientId() string {
+	return this.clientId
+}
+
+func (this *event_connect) GetWillTopic() string {
+	return this.willTopic
+}
+
+func (this *event_connect) GetWillMessage() string {
+	return this.willMessage
+}
+
+func (this *event_connect) GetUserName() string {
+	return this.userName
+}
+
+func (this *event_connect) GetPassword() []byte {
+	return this.password
+}
+
+type event_publish struct {
+	event
+
+	msg Message
+}
+
+func newEventPublish(s Session, m Message) *event_publish {
+	this := &event_publish{}
+
+	this.eventType = EVENT_PUBLISH
+	this.session = s
+
+	this.msg = m
+
+	return this
+}
+
+func (this *event_publish) GetMessage() Message {
+	return this.msg
+}
+
+type event_subscribe struct {
+	event
+
+	topics []string
+	qos    []QOS
+}
+
+func newEventSubscribe(s Session, t []string, q []QOS) *event_subscribe {
+	this := &event_subscribe{}
+
+	this.eventType = EVENT_SUBSCRIBE
+	this.session = s
+
+	this.topics = t
+	this.qos = q
+
+	return this
+}
+
+func (this *event_subscribe) GetSubscribeTopics() []string {
+	return this.topics
+}
+
+func (this *event_subscribe) GetQoSs() []QOS {
+	return this.qos
+}
+
+type event_unsubscribe struct {
+	event
+
+	topics []string
+}
+
+func newEventUnsubscribe(s Session, t []string) *event_unsubscribe {
+	this := &event_unsubscribe{}
+
+	this.eventType = EVENT_UNSUBSCRIBE
+	this.session = s
+
+	this.topics = t
+
+	return this
+}
+
+func (this *event_unsubscribe) GetUnsubscribeTopics() []string {
+	return this.topics
+}
+
 type event_timeout struct {
 	event
 
 	timeoutType TimeoutType
 }
 
-func newEventTimeout(e EventType, s Session, t TimeoutType) *event_timeout {
+func newEventTimeout(s Session, t TimeoutType) *event_timeout {
 	this := &event_timeout{}
 
-	this.eventType = e
+	this.eventType = EVENT_TIMEOUT
 	this.session = s
+
 	this.timeoutType = t
 
 	return this
@@ -150,10 +278,10 @@ type event_ioexception struct {
 	addr net.Addr
 }
 
-func newEventIOException(e EventType, s Session, addr net.Addr) *event_ioexception {
+func newEventIOException(s Session, addr net.Addr) *event_ioexception {
 	this := &event_ioexception{}
 
-	this.eventType = e
+	this.eventType = EVENT_IOEXCEPTION
 	this.session = s
 	this.addr = addr
 
