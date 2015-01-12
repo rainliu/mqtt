@@ -168,9 +168,9 @@ func (this *packet_connect) IParse(buffer []byte) error {
 	}
 	consumedBytes += protocolLength
 
-	if this.protocolLevel = buffer[consumedBytes]; this.protocolLevel != 4 {
+	this.protocolLevel = buffer[consumedBytes] /*this.protocolLevel != 4 {
 		return fmt.Errorf("Invalid %x Control Packet Protocol Level %x\n", this.packetType, this.protocolLevel)
-	}
+	}*/
 	consumedBytes += 1
 
 	if this.connectFlags = buffer[consumedBytes]; (this.connectFlags & CONNECT_FLAG_RESERVED) != 0 {
@@ -211,6 +211,9 @@ func (this *packet_connect) IParse(buffer []byte) error {
 			return fmt.Errorf("Invalid %x Control Packet WillMessage DecodingUTF8 %s\n", this.packetType, err.Error())
 		}
 		consumedBytes += utf8Bytes
+	} else {
+		this.willTopic = ""
+		this.willMessage = ""
 	}
 
 	//UserName Flag bit 7
@@ -219,6 +222,8 @@ func (this *packet_connect) IParse(buffer []byte) error {
 			return fmt.Errorf("Invalid %x Control Packet UserName DecodingUTF8 %s\n", this.packetType, err.Error())
 		}
 		consumedBytes += utf8Bytes
+	} else {
+		this.userName = ""
 	}
 
 	//Password Flag bit 6
@@ -227,6 +232,8 @@ func (this *packet_connect) IParse(buffer []byte) error {
 			return fmt.Errorf("Invalid %x Control Packet Password DecodingBinary %s\n", this.packetType, err.Error())
 		}
 		consumedBytes += utf8Bytes
+	} else {
+		this.password = nil
 	}
 
 	return nil

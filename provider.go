@@ -177,7 +177,7 @@ func (this *provider) ServeConn(conn net.Conn) {
 				switch evt.GetEventType() {
 				case EVENT_CONNECT:
 					for _, ln := range this.listeners {
-						ln.ProcessPublish(evt.(EventPublish))
+						ln.ProcessConnect(evt.(EventConnect))
 					}
 				case EVENT_PUBLISH:
 					for _, ln := range this.listeners {
@@ -199,8 +199,9 @@ func (this *provider) ServeConn(conn net.Conn) {
 					for _, ln := range this.listeners {
 						ln.ProcessIOException(evt.(EventIOException))
 					}
-					ss.Terminate(err)
+					ss.Terminate(errors.New(ss.Error()))
 				default:
+					ss.Terminate(errors.New(ss.Error()))
 				}
 			}
 		}
