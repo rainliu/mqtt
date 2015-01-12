@@ -31,44 +31,56 @@ type Event interface {
 	GetSession() Session
 }
 
-type PublishEvent interface {
+type EventConnect interface {
+	Event
+
+	GetConnectFlags() byte
+	GetKeepAlive() uint16
+	GetClientId() string
+	GetWillTopic() string
+	GetWillMessage() string
+	GetUserName() string
+	GetPassword() []byte
+}
+
+type EventPublish interface {
 	Event
 
 	GetMessage() Message
 }
 
-type SubscribeEvent interface {
+type EventSubscribe interface {
 	Event
 
 	GetSubscribeTopics() []string
-	GetQos() []QOS
+	GetQoSs() []QOS
 }
 
-type UnsubscribeEvent interface {
+type EventUnsubscribe interface {
 	Event
 
 	GetUnsubscribeTopics() []string
 }
 
-type SessionCreatedEvent interface {
+type EventSessionCreated interface {
 	Event
 
 	GetReason() string
 }
 
-type SessionTerminatedEvent interface {
+type EventSessionTerminated interface {
 	Event
 
 	GetReason() string
 }
 
-type TimeoutEvent interface {
+type EventTimeout interface {
 	Event
 
 	GetTimeoutType() TimeoutType
 }
 
-type IOExceptionEvent interface {
+type EventIOException interface {
 	Event
 
 	GetRemoteAddr() net.Addr
@@ -92,14 +104,14 @@ func (this *event) GetSession() Session {
 	return this.session
 }
 
-type sessionEvent struct {
+type event_session struct {
 	event
 
 	reason string
 }
 
-func newSessionEvent(e EventType, s Session, r string) *sessionEvent {
-	this := &sessionEvent{}
+func newEventSession(e EventType, s Session, r string) *event_session {
+	this := &event_session{}
 
 	this.eventType = e
 	this.session = s
@@ -108,18 +120,18 @@ func newSessionEvent(e EventType, s Session, r string) *sessionEvent {
 	return this
 }
 
-func (this *sessionEvent) GetReason() string {
+func (this *event_session) GetReason() string {
 	return this.reason
 }
 
-type timeoutEvent struct {
+type event_timeout struct {
 	event
 
 	timeoutType TimeoutType
 }
 
-func newTimeoutEvent(e EventType, s Session, t TimeoutType) *timeoutEvent {
-	this := &timeoutEvent{}
+func newEventTimeout(e EventType, s Session, t TimeoutType) *event_timeout {
+	this := &event_timeout{}
 
 	this.eventType = e
 	this.session = s
@@ -128,18 +140,18 @@ func newTimeoutEvent(e EventType, s Session, t TimeoutType) *timeoutEvent {
 	return this
 }
 
-func (this *timeoutEvent) GetTimeoutType() TimeoutType {
+func (this *event_timeout) GetTimeoutType() TimeoutType {
 	return this.timeoutType
 }
 
-type ioExceptionEvent struct {
+type event_ioexception struct {
 	event
 
 	addr net.Addr
 }
 
-func newIOExceptionEvent(e EventType, s Session, addr net.Addr) *ioExceptionEvent {
-	this := &ioExceptionEvent{}
+func newEventIOException(e EventType, s Session, addr net.Addr) *event_ioexception {
+	this := &event_ioexception{}
 
 	this.eventType = e
 	this.session = s
@@ -148,6 +160,6 @@ func newIOExceptionEvent(e EventType, s Session, addr net.Addr) *ioExceptionEven
 	return this
 }
 
-func (this *ioExceptionEvent) GetRemoteAddr() net.Addr {
+func (this *event_ioexception) GetRemoteAddr() net.Addr {
 	return this.addr
 }

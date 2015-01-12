@@ -102,7 +102,7 @@ func (this *provider) Forward(msg Message) {
 	for _, ss := range this.serverSessions {
 		if err := ss.Forward(msg); err != nil {
 			for _, ln := range this.listeners {
-				ln.ProcessIOException(newIOExceptionEvent(EVENT_IOEXCEPTION, ss, ss.conn.RemoteAddr()))
+				ln.ProcessIOException(newEventIOException(EVENT_IOEXCEPTION, ss, ss.conn.RemoteAddr()))
 			}
 		}
 	}
@@ -160,7 +160,7 @@ func (this *provider) ServeConn(conn net.Conn) {
 
 	this.serverSessions[ss] = ss
 	for _, ln := range this.listeners {
-		ln.ProcessSessionCreated(newSessionEvent(EVENT_SESSION_CREATED, ss, "New Connection Coming"))
+		ln.ProcessSessionCreated(newEventSession(EVENT_SESSION_CREATED, ss, "New Connection Coming"))
 	}
 
 	var pkt []byte
@@ -179,33 +179,35 @@ func (this *provider) ServeConn(conn net.Conn) {
 			}
 			log.Println(err)
 			for _, ln := range this.listeners {
-				ln.ProcessIOException(newIOExceptionEvent(EVENT_IOEXCEPTION, ss, conn.RemoteAddr()))
+				ln.ProcessIOException(newEventIOException(EVENT_IOEXCEPTION, ss, conn.RemoteAddr()))
 			}
 		} else {
 			if evt := ss.Process(pkt); evt != nil {
 				switch evt.GetEventType() {
+				case EVENT_CONNECT:
+					for _, ln := range this.listeners {
+						ln.ProcessPublish(evt.(EventPublish))
+					}
 				case EVENT_PUBLISH:
 					for _, ln := range this.listeners {
-						ln.ProcessPublish(evt.(PublishEvent))
+						ln.ProcessPublish(evt.(EventPublish))
 					}
 				case EVENT_SUBSCRIBE:
 					for _, ln := range this.listeners {
-						ln.ProcessSubscribe(evt.(SubscribeEvent))
+						ln.ProcessSubscribe(evt.(EventSubscribe))
 					}
 				case EVENT_UNSUBSCRIBE:
 					for _, ln := range this.listeners {
-						ln.ProcessUnsubscribe(evt.(UnsubscribeEvent))
+						ln.ProcessUnsubscribe(evt.(EventUnsubscribe))
 					}
 				case EVENT_TIMEOUT:
 					for _, ln := range this.listeners {
-						ln.ProcessTimeout(evt.(TimeoutEvent))
+						ln.ProcessTimeout(evt.(EventTimeout))
 					}
 				case EVENT_IOEXCEPTION:
 					for _, ln := range this.listeners {
-						ln.ProcessIOException(evt.(IOExceptionEvent))
+						ln.ProcessIOException(evt.(EventIOException))
 					}
-				case EVENT_SESSION_TERMINATED:
-					//TODO
 				default:
 				}
 			}
@@ -213,7 +215,7 @@ func (this *provider) ServeConn(conn net.Conn) {
 	}
 
 	for _, ln := range this.listeners {
-		ln.ProcessSessionTerminated(newSessionEvent(EVENT_SESSION_TERMINATED, ss, ss.Error()))
+		ln.ProcessSessionTerminated(newEventSession(EVENT_SESSION_TERMINATED, ss, ss.Error()))
 	}
 	delete(this.serverSessions, ss)
 }
