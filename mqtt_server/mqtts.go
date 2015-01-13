@@ -2,9 +2,12 @@ package main
 
 import (
 	"crypto/tls"
+	"log"
 	"mqtt"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 )
 
 func main() {
@@ -37,4 +40,11 @@ func main() {
 	provider.AddListener(listener)
 
 	stack.Run()
+
+	ch := make(chan os.Signal)
+	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
+	log.Println(<-ch)
+
+	// Stop the service gracefully.
+	stack.Stop()
 }

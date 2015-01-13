@@ -125,7 +125,7 @@ func (this *provider) ServeAccept(st *transport) {
 	for {
 		select {
 		case <-st.ch:
-			log.Println("Listening %s://%s:%d Stoped!!!\n", st.GetNetwork(), st.GetAddress(), st.GetPort())
+			log.Printf("Listening %s://%s:%d Stoped!!!\n", st.GetNetwork(), st.GetAddress(), st.GetPort())
 			return
 		default:
 		}
