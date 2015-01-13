@@ -96,14 +96,12 @@ func (this *serverSession) Process(buf []byte) Event {
 		case PACKET_CONNECT:
 			return this.ProcessConnect(pkt.(PacketConnect))
 		default:
-			this.state = SESSION_STATE_TERMINATED
-			this.err = errors.New("Invalid First CONNECT Packet Received\n")
+			return this.ProcessTerminate("Invalid First CONNECT Packet Received\n")
 		}
 	case SESSION_STATE_CONNECT:
 		switch pkt.GetType() {
 		case PACKET_CONNECT:
-			this.state = SESSION_STATE_TERMINATED
-			this.err = errors.New("Invalid Second or Multiple CONNECT Packets Received\n")
+			return this.ProcessTerminate("Invalid Second or Multiple CONNECT Packets Received\n")
 		case PACKET_PUBLISH:
 			return this.ProcessPublish(pkt.(PacketPublish))
 		case PACKET_SUBSCRIBE:
@@ -111,18 +109,15 @@ func (this *serverSession) Process(buf []byte) Event {
 		case PACKET_UNSUBSCRIBE:
 			return this.ProcessUnsubscribe(pkt.(PacketUnsubscribe))
 		case PACKET_DISCONNECT:
-			return this.ProcessDisconnect(pkt.(PacketDisconnect))
+			return this.ProcessTerminate("DISCONNECT Packet Received\n")
 		default:
-			this.state = SESSION_STATE_TERMINATED
-			this.err = fmt.Errorf("Unexpected %x Packet Received\n", pkt.GetType())
+			return this.ProcessTerminate(fmt.Sprintf("Unexpected %x Packet Received\n", pkt.GetType()))
 		}
 	case SESSION_STATE_PUBLISH:
 		switch pkt.GetType() {
 		case PACKET_PUBREL:
-			pktpubrel := pkt.(PacketPubrel)
-			if pktpubrel.GetPacketId() != this.pubPacketId {
-				this.state = SESSION_STATE_TERMINATED
-				this.err = errors.New("Invalid PubRel PacketId Received\n")
+			if pkt.(PacketPubrel).GetPacketId() != this.pubPacketId {
+				return this.ProcessTerminate("Invalid PubRel PacketId Received\n")
 			} else {
 				this.state = SESSION_STATE_CONNECT
 				pkgpubcomp := NewPacketAcks(PACKET_PUBCOMP)
@@ -130,8 +125,7 @@ func (this *serverSession) Process(buf []byte) Event {
 				this.conn.Write(pkgpubcomp.Bytes())
 			}
 		default:
-			this.state = SESSION_STATE_TERMINATED
-			this.err = fmt.Errorf("Unexpected %x Packet Received\n", pkt.GetType())
+			return this.ProcessTerminate(fmt.Sprintf("Unexpected %x Packet Received\n", pkt.GetType()))
 		}
 	case SESSION_STATE_TIMEOUT:
 
@@ -201,9 +195,8 @@ func (this *serverSession) ProcessUnsubscribe(pktunsub PacketUnsubscribe) Event 
 	return newEventUnsubscribe(this, topics)
 }
 
-func (this *serverSession) ProcessDisconnect(pktunsub PacketDisconnect) Event {
+func (this *serverSession) ProcessTerminate(msg string) Event {
 	this.state = SESSION_STATE_TERMINATED
-	this.err = errors.New("DISCONNECT Packet Received\n")
-
-	return newEventSession(EVENT_SESSION_TERMINATED, this, this.Error())
+	this.err = errors.New(msg)
+	return newEventSession(EVENT_SESSION_TERMINATED, this, msg)
 }

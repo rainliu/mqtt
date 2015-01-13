@@ -12,14 +12,14 @@ func newListener(provider mqtt.Provider) *mqtts_listener {
 	return &mqtts_listener{provider}
 }
 func (this *mqtts_listener) ProcessSessionCreated(eventSessionCreated mqtt.EventSessionCreated) {
-	println("SessionCreated with reason: ", eventSessionCreated.GetReason())
+	println("Session Created with reason: ", eventSessionCreated.GetReason())
 }
 func (this *mqtts_listener) ProcessSessionTerminated(eventSessionTerminated mqtt.EventSessionTerminated) {
-	println("SessionTerminated with reason: ", eventSessionTerminated.GetReason())
+	println("Session Terminated with reason: ", eventSessionTerminated.GetReason())
 }
 
 func (this *mqtts_listener) ProcessConnect(eventConnect mqtt.EventConnect) {
-	println("received CONNECT")
+	println("Received CONNECT")
 	serverSession := eventConnect.GetSession().(mqtt.ServerSession)
 	serverSession.Respond(false, mqtt.CONNACK_RETURNCODE_ACCEPTED)
 }
@@ -37,5 +37,5 @@ func (this *mqtts_listener) ProcessTimeout(eventTimeout mqtt.EventTimeout) {
 
 }
 func (this *mqtts_listener) ProcessIOException(eventIOException mqtt.EventIOException) {
-	println("received IOException with remote addr: ", eventIOException.GetRemoteAddr())
+	println("Received IOException")
 }
