@@ -111,8 +111,7 @@ func (this *serverSession) Process(buf []byte) Event {
 		case PACKET_UNSUBSCRIBE:
 			return this.ProcessUnsubscribe(pkt.(PacketUnsubscribe))
 		case PACKET_DISCONNECT:
-			this.state = SESSION_STATE_TERMINATED
-			this.err = errors.New("DISCONNECT Packet Received\n")
+			return this.ProcessDisconnect(pkt.(PacketDisconnect))
 		default:
 			this.state = SESSION_STATE_TERMINATED
 			this.err = fmt.Errorf("Unexpected %x Packet Received\n", pkt.GetType())
@@ -200,4 +199,11 @@ func (this *serverSession) ProcessUnsubscribe(pktunsub PacketUnsubscribe) Event 
 	this.conn.Write(pkgsuback.Bytes())
 
 	return newEventUnsubscribe(this, topics)
+}
+
+func (this *serverSession) ProcessDisconnect(pktunsub PacketDisconnect) Event {
+	this.state = SESSION_STATE_TERMINATED
+	this.err = errors.New("DISCONNECT Packet Received\n")
+
+	return newEventSession(EVENT_SESSION_TERMINATED, this, this.Error())
 }

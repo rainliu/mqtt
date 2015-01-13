@@ -2,7 +2,7 @@ package mqtt
 
 import (
 	"errors"
-	"io/ioutil"
+	"io"
 	"log"
 	"net"
 	"sync"
@@ -159,17 +159,22 @@ func (this *provider) ServeConn(conn net.Conn) {
 		select {
 		case <-ss.ch:
 			log.Println("disconnecting", conn.RemoteAddr())
-			break
+			for _, ln := range this.listeners {
+				ln.ProcessSessionTerminated(newEventSession(EVENT_SESSION_TERMINATED, ss, ss.Error()))
+			}
+			delete(this.serverSessions, ss)
+			return
 		default:
 		}
-		conn.SetDeadline(time.Now().Add(1e9))
-		if buf, err = ioutil.ReadAll(conn); err != nil {
+
+		if buf, err = this.ReadPacket(conn); err != nil {
 			if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
 				continue
-			}
-			log.Println(err)
-			for _, ln := range this.listeners {
-				ln.ProcessIOException(newEventIOException(ss, conn.RemoteAddr()))
+			} else if err != io.EOF {
+				log.Println(err)
+				for _, ln := range this.listeners {
+					ln.ProcessIOException(newEventIOException(ss, conn.RemoteAddr()))
+				}
 			}
 			ss.Terminate(err)
 		} else {
@@ -206,11 +211,6 @@ func (this *provider) ServeConn(conn net.Conn) {
 			}
 		}
 	}
-
-	for _, ln := range this.listeners {
-		ln.ProcessSessionTerminated(newEventSession(EVENT_SESSION_TERMINATED, ss, ss.Error()))
-	}
-	delete(this.serverSessions, ss)
 }
 
 func (this *provider) Forward(msg Message) {
@@ -222,4 +222,40 @@ func (this *provider) Forward(msg Message) {
 			}
 		}
 	}
+}
+
+func (this *provider) ReadPacket(conn net.Conn) ([]byte, error) {
+	var pkt [1]byte
+	var buf []byte
+	var err error
+
+	conn.SetDeadline(time.Now().Add(1e9))
+	if _, err = conn.Read(pkt[:]); err != nil {
+		return nil, err
+	}
+	buf = append(buf, pkt[0])
+
+	var remainingLength uint32 = 0
+	var multiplier uint32 = 1
+	for {
+		if _, err = conn.Read(pkt[:]); err != nil {
+			return nil, err
+		}
+		buf = append(buf, pkt[0])
+		remainingLength += uint32(pkt[0]&127) * multiplier
+		if (pkt[0] & 128) == 0 {
+			break
+		}
+		multiplier *= 128
+	}
+
+	if remainingLength > 0 {
+		data := make([]byte, remainingLength)
+		if _, err = io.ReadFull(conn, data); err != nil {
+			return nil, err
+		}
+		buf = append(buf, data...)
+	}
+
+	return buf, nil
 }
