@@ -213,8 +213,10 @@ func (this *packet_suback) SetReturnCodes(returnCodes []byte) {
 }
 
 ////////////////////Implementation////////////////////////
+type CONNACK_RETURNCODE byte
+
 const (
-	CONNACK_RETURNCODE_ACCEPTED byte = iota
+	CONNACK_RETURNCODE_ACCEPTED CONNACK_RETURNCODE = iota
 	CONNACK_RETURNCODE_REFUSED_UNACCEPTABLE_PROTOCOL_VERSION
 	CONNACK_RETURNCODE_REFUSED_IDENTIFIER_REJECTED
 	CONNACK_RETURNCODE_REFUSED_SERVER_UNAVAILABLE
@@ -226,7 +228,7 @@ type packet_connack struct {
 	packet
 
 	spFlag     byte
-	returnCode byte
+	returnCode CONNACK_RETURNCODE
 }
 
 func NewPacketConnack() *packet_connack {
@@ -250,7 +252,7 @@ func (this *packet_connack) IBytize() []byte {
 
 	//Variable Header
 	buffer.WriteByte(byte(this.spFlag))
-	buffer.WriteByte(this.returnCode)
+	buffer.WriteByte(byte(this.returnCode))
 
 	return buffer.Bytes()
 }
@@ -276,7 +278,11 @@ func (this *packet_connack) IParse(buffer []byte) error {
 		return fmt.Errorf("Invalid %x Control Packet Acknowledge Flags %x\n", this.packetType, buffer[2])
 	}
 	this.spFlag = buffer[2] & 0x01
-	this.returnCode = buffer[3]
+
+	if buffer[3] > 0x05 {
+		return fmt.Errorf("Invalid %x Control Packet Return Code %x\n", this.packetType, buffer[3])
+	}
+	this.returnCode = CONNACK_RETURNCODE(buffer[3])
 
 	return nil
 }
@@ -293,9 +299,9 @@ func (this *packet_connack) SetSPFlag(spFlag bool) {
 	}
 }
 
-func (this *packet_connack) GetReturnCode() byte {
+func (this *packet_connack) GetReturnCode() CONNACK_RETURNCODE {
 	return this.returnCode
 }
-func (this *packet_connack) SetReturnCode(c byte) {
+func (this *packet_connack) SetReturnCode(c CONNACK_RETURNCODE) {
 	this.returnCode = c
 }

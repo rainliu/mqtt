@@ -3,16 +3,16 @@ package mqtt
 ////////////////////Interface//////////////////////////////
 
 type Listener interface {
-	ProcessSessionCreated(eventSessionCreated EventSessionCreated) error
-	ProcessSessionTerminated(eventSessionTerminated EventSessionTerminated) error
+	ProcessSessionCreated(eventSessionCreated EventSessionCreated)
+	ProcessSessionTerminated(eventSessionTerminated EventSessionTerminated)
 
-	ProcessConnect(eventConnect EventConnect) error
-	ProcessPublish(eventPublish EventPublish) error
-	ProcessSubscribe(eventSubscribe EventSubscribe) error
-	ProcessUnsubscribe(eventUnsubscribe EventUnsubscribe) error
+	ProcessConnect(eventConnect EventConnect)
+	ProcessPublish(eventPublish EventPublish)
+	ProcessSubscribe(eventSubscribe EventSubscribe)
+	ProcessUnsubscribe(eventUnsubscribe EventUnsubscribe)
 
-	ProcessTimeout(eventTimeout EventTimeout) error
-	ProcessIOException(eventIOException EventIOException) error
+	ProcessTimeout(eventTimeout EventTimeout)
+	ProcessIOException(eventIOException EventIOException)
 }
 
 ////////////////////Implementation////////////////////////

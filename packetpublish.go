@@ -110,6 +110,9 @@ func (this *packet_publish) IParse(buffer []byte) error {
 		qos = QOS((buffer[0] >> 1) & 0x03)
 	}
 	if (buffer[0]>>3)&0x01 == 0x01 {
+		if qos == QOS_ZERO {
+			return fmt.Errorf("Invalid %x Control Packet DUP flag %x for Qos 0\n", this.packetType, 0x01)
+		}
 		dup = true
 	} else {
 		dup = false
