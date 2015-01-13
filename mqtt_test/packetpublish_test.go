@@ -1,13 +1,14 @@
-package mqtt
+package mqtt_test
 
 import (
+	"mqtt"
 	"testing"
 )
 
 func TestPacketPublish(t *testing.T) {
 	input := []byte{0x30, 0x07, 0x00, 0x03, 0x61, 0x2F, 0x62, 0x0F, 0xF0}
 
-	pkt := NewPacketPublish()
+	pkt := mqtt.NewPacketPublish()
 	if err := pkt.Parse(input); err != nil {
 		t.Errorf(err.Error())
 		return

@@ -1,13 +1,14 @@
-package mqtt
+package mqtt_test
 
 import (
+	"mqtt"
 	"testing"
 )
 
 func TestPacketPingreq(t *testing.T) {
 	input := []byte{0xC0, 0x00}
 
-	pkt := NewPacket(PACKET_PINGREQ)
+	pkt := mqtt.NewPacket(mqtt.PACKET_PINGREQ)
 	if err := pkt.Parse(input); err != nil {
 		t.Errorf(err.Error())
 		return
@@ -31,7 +32,7 @@ func TestPacketPingreq(t *testing.T) {
 func TestPacketPingresp(t *testing.T) {
 	input := []byte{0xD0, 0x00}
 
-	pkt := NewPacket(PACKET_PINGRESP)
+	pkt := mqtt.NewPacket(mqtt.PACKET_PINGRESP)
 	if err := pkt.Parse(input); err != nil {
 		t.Errorf(err.Error())
 	}
@@ -54,7 +55,7 @@ func TestPacketPingresp(t *testing.T) {
 func TestPacketDisconnect(t *testing.T) {
 	input := []byte{0xE0, 0x00}
 
-	pkt := NewPacket(PACKET_DISCONNECT)
+	pkt := mqtt.NewPacket(mqtt.PACKET_DISCONNECT)
 	if err := pkt.Parse(input); err != nil {
 		t.Errorf(err.Error())
 	}

@@ -1,13 +1,14 @@
-package mqtt
+package mqtt_test
 
 import (
+	"mqtt"
 	"testing"
 )
 
 func TestPacketUnsubscribe(t *testing.T) {
 	input := []byte{0xA2, 0x07, 0x01, 0xF0, 0x00, 0x03, 0x61, 0x2F, 0x62}
 
-	pkt := NewPacketUnsubscribe()
+	pkt := mqtt.NewPacketUnsubscribe()
 	if err := pkt.Parse(input); err != nil {
 		t.Errorf(err.Error())
 		return

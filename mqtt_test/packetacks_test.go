@@ -1,13 +1,14 @@
-package mqtt
+package mqtt_test
 
 import (
+	"mqtt"
 	"testing"
 )
 
 func TestPacketAcks(t *testing.T) {
 	input := []byte{0xB0, 0x02, 0x0F, 0xF0}
 
-	pkt := NewPacketAcks(PACKET_UNSUBACK)
+	pkt := mqtt.NewPacketAcks(mqtt.PACKET_UNSUBACK)
 	if err := pkt.Parse(input); err != nil {
 		t.Errorf(err.Error())
 		return
@@ -34,7 +35,7 @@ func TestPacketAcks(t *testing.T) {
 func TestPacketSuback(t *testing.T) {
 	input := []byte{0x90, 0x03, 0x01, 0xF0, 0x01}
 
-	pkt := NewPacketSuback()
+	pkt := mqtt.NewPacketSuback()
 	if err := pkt.Parse(input); err != nil {
 		t.Errorf(err.Error())
 		return
@@ -73,7 +74,7 @@ func TestPacketSuback(t *testing.T) {
 func TestPacketConnack(t *testing.T) {
 	input := []byte{0x20, 0x02, 0x01, 0x00}
 
-	pkt := NewPacketConnack()
+	pkt := mqtt.NewPacketConnack()
 	if err := pkt.Parse(input); err != nil {
 		t.Errorf(err.Error())
 		return

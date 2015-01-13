@@ -1,13 +1,14 @@
-package mqtt
+package mqtt_test
 
 import (
+	"mqtt"
 	"testing"
 )
 
 func TestPacketConnect(t *testing.T) {
 	input := []byte{0x10, 0x0D, 0x00, 0x04, 0x4D, 0x51, 0x54, 0x54, 0x04, 0x00, 0x00, 0x10, 0x00, 0x01, 0xFF}
 
-	pkt := NewPacketConnect()
+	pkt := mqtt.NewPacketConnect()
 	if err := pkt.Parse(input); err != nil {
 		t.Errorf(err.Error())
 		return
