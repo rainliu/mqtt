@@ -107,10 +107,15 @@ func (this *serverSession) Process(buf []byte) Event {
 		case PACKET_PUBLISH:
 			return this.ProcessPublish(pkt.(PacketPublish))
 		case PACKET_SUBSCRIBE:
+			return this.ProcessSubscribe(pkt.(PacketSubscribe))
 		case PACKET_UNSUBSCRIBE:
+			return this.ProcessUnsubscribe(pkt.(PacketUnsubscribe))
 		case PACKET_DISCONNECT:
 			this.state = SESSION_STATE_TERMINATED
+			this.err = errors.New("DISCONNECT Packet Received\n")
 		default:
+			this.state = SESSION_STATE_TERMINATED
+			this.err = fmt.Errorf("Unexpected %x Packet Received\n", pkt.GetType())
 		}
 	case SESSION_STATE_PUBLISH:
 		switch pkt.GetType() {
@@ -126,7 +131,11 @@ func (this *serverSession) Process(buf []byte) Event {
 				this.conn.Write(pkgpubcomp.Bytes())
 			}
 		default:
+			this.state = SESSION_STATE_TERMINATED
+			this.err = fmt.Errorf("Unexpected %x Packet Received\n", pkt.GetType())
 		}
+	case SESSION_STATE_TIMEOUT:
+
 	case SESSION_STATE_TERMINATED:
 	default:
 	}
@@ -168,4 +177,27 @@ func (this *serverSession) ProcessPublish(pktpub PacketPublish) Event {
 		this.conn.Write(pkgpuback.Bytes())
 	}
 	return newEventPublish(this, pktpub.GetMessage())
+}
+
+func (this *serverSession) ProcessSubscribe(pktsub PacketSubscribe) Event {
+	this.topics = pktsub.GetSubscribeTopics()
+	this.qos = pktsub.GetQoSs()
+	returnCodes := make([]byte, len(this.topics))
+
+	pkgsuback := NewPacketSuback()
+	pkgsuback.SetPacketId(pktsub.GetPacketId())
+	pkgsuback.SetReturnCodes(returnCodes)
+	this.conn.Write(pkgsuback.Bytes())
+
+	return newEventSubscribe(this, this.topics, this.qos)
+}
+
+func (this *serverSession) ProcessUnsubscribe(pktunsub PacketUnsubscribe) Event {
+	topics := pktunsub.GetUnsubscribeTopics()
+
+	pkgsuback := NewPacketAcks(PACKET_UNSUBACK)
+	pkgsuback.SetPacketId(pktunsub.GetPacketId())
+	this.conn.Write(pkgsuback.Bytes())
+
+	return newEventUnsubscribe(this, topics)
 }
