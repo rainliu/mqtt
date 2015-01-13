@@ -108,6 +108,9 @@ func (this *serverSession) Process(buf []byte) Event {
 			return this.ProcessSubscribe(pkt.(PacketSubscribe))
 		case PACKET_UNSUBSCRIBE:
 			return this.ProcessUnsubscribe(pkt.(PacketUnsubscribe))
+		case PACKET_PINGREQ:
+			pkgpingresp := NewPacket(PACKET_PINGRESP)
+			this.conn.Write(pkgpingresp.Bytes())
 		case PACKET_DISCONNECT:
 			return this.ProcessTerminate("DISCONNECT Packet Received\n")
 		default:
