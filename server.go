@@ -37,7 +37,8 @@ type serverSession struct {
 	qos    []QOS
 
 	//others
-	packetId uint16
+	packetId             uint16
+	keepAliveAccumulated uint16
 }
 
 func newServerSession(conn net.Conn) *serverSession {
@@ -47,7 +48,7 @@ func newServerSession(conn net.Conn) *serverSession {
 	this.err = nil
 	this.state = SESSION_STATE_CREATED
 	this.ch = make(chan bool)
-	this.timeout = make(chan bool)
+	//this.timeout = make(chan bool)
 	this.packetId = 0
 	this.keepAlive = 0
 	this.keepAliveAccumulated = 0

@@ -160,12 +160,12 @@ func (this *provider) ServeConn(conn net.Conn) {
 			}
 			delete(this.serverSessions, ss)
 			return
-		case <-ss.timeout:
-			log.Println("Timeout", conn.RemoteAddr())
-			for _, ln := range this.listeners {
-				ln.ProcessTimeout(newEventTimeout(ss, TIMEOUT_SESSION))
-			}
-			ss.Terminate(errors.New("Timeout"))
+		// case <-ss.timeout:
+		// 	log.Println("Timeout", conn.RemoteAddr())
+		// 	for _, ln := range this.listeners {
+		// 		ln.ProcessTimeout(newEventTimeout(ss, TIMEOUT_SESSION))
+		// 	}
+		// 	ss.Terminate(errors.New("Timeout"))
 		default:
 			//can't delete default, otherwise blocking call
 		}
@@ -174,15 +174,22 @@ func (this *provider) ServeConn(conn net.Conn) {
 			if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
 				ss.keepAliveAccumulated += 1 //add 1 second
 				if ss.keepAlive != 0 && ss.keepAliveAccumulated >= (ss.keepAlive*3)/2 {
-					ss.timeout <- true
+					//ss.timeout <- true
+					log.Println("Timeout", conn.RemoteAddr())
+					for _, ln := range this.listeners {
+						ln.ProcessTimeout(newEventTimeout(ss, TIMEOUT_SESSION))
+					}
+					ss.Terminate(errors.New("Timeout"))
+				} else {
+					continue
 				}
-				continue
+			} else {
+				log.Println(err)
+				for _, ln := range this.listeners {
+					ln.ProcessIOException(newEventIOException(ss, conn.RemoteAddr()))
+				}
+				ss.Terminate(err)
 			}
-			log.Println(err)
-			for _, ln := range this.listeners {
-				ln.ProcessIOException(newEventIOException(ss, conn.RemoteAddr()))
-			}
-			ss.Terminate(err)
 		} else {
 			ss.keepAliveAccumulated = 0
 			if evt := ss.Process(buf); evt != nil {
