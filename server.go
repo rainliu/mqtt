@@ -69,8 +69,12 @@ func (this *serverSession) Forward(msg Message) error {
 func (this *serverSession) Respond(spFlag bool, retCode CONNACK_RETURNCODE) error {
 	if this.state == SESSION_STATE_CREATED {
 		pkgconnack := NewPacketConnack()
-		pkgconnack.SetSPFlag(spFlag)
 		pkgconnack.SetReturnCode(retCode)
+		if retCode != CONNACK_RETURNCODE_ACCEPTED {
+			pkgconnack.SetSPFlag(false)
+		} else {
+			pkgconnack.SetSPFlag(spFlag)
+		}
 		if _, err := this.conn.Write(pkgconnack.Bytes()); err != nil {
 			return err
 		}
