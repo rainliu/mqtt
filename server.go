@@ -47,7 +47,10 @@ func newServerSession(conn net.Conn) *serverSession {
 	this.err = nil
 	this.state = SESSION_STATE_CREATED
 	this.ch = make(chan bool)
+	this.timeout = make(chan bool)
 	this.packetId = 0
+	this.keepAlive = 0
+	this.keepAliveAccumlated = 0
 
 	return this
 }
@@ -134,8 +137,6 @@ func (this *serverSession) Process(buf []byte) Event {
 		default:
 			return this.ProcessTerminate(fmt.Sprintf("Unexpected %x Packet Received\n", pkt.GetType()))
 		}
-	case SESSION_STATE_TIMEOUT:
-
 	case SESSION_STATE_TERMINATED:
 	default:
 	}

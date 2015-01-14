@@ -8,7 +8,6 @@ const (
 	SESSION_STATE_CREATED SessionState = iota
 	SESSION_STATE_CONNECT
 	SESSION_STATE_PUBLISH
-	SESSION_STATE_TIMEOUT
 	SESSION_STATE_TERMINATED
 )
 
@@ -27,11 +26,13 @@ type Session interface {
 ////////////////////Implementation////////////////////////
 
 type session struct {
-	state           SessionState
-	err             error
-	ch              chan bool
-	appData         interface{}
-	retransmitTimer int
+	state               SessionState
+	err                 error
+	ch                  chan bool
+	timeout             chan bool
+	keepAliveAccumlated uint16
+	appData             interface{}
+	retransmitTimer     int
 }
 
 func (this *session) GetRetransmitTimer() int {

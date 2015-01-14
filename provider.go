@@ -160,11 +160,22 @@ func (this *provider) ServeConn(conn net.Conn) {
 			}
 			delete(this.serverSessions, ss)
 			return
+		case <-ss.timeout:
+			log.Println("Timeout", conn.RemoteAddr())
+			for _, ln := range this.listeners {
+				ln.ProcessTimeout(newEventTimeout(ss, TIMEOUT_SESSION))
+			}
+			ss.Terminate(errors.New("Timeout"))
 		default:
+			//can't delete default, otherwise blocking call
 		}
 
 		if buf, err = this.ReadPacket(conn); err != nil {
 			if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
+				ss.keepAliveAccumlated += 1 //add 1 second
+				if ss.keepAlive != 0 && ss.keepAliveAccumlated >= (ss.keepAlive*3)/2 {
+					ss.timeout <- true
+				}
 				continue
 			}
 			log.Println(err)
@@ -173,6 +184,7 @@ func (this *provider) ServeConn(conn net.Conn) {
 			}
 			ss.Terminate(err)
 		} else {
+			ss.keepAliveAccumlated = 0
 			if evt := ss.Process(buf); evt != nil {
 				switch evt.GetEventType() {
 				case EVENT_CONNECT:
@@ -224,7 +236,7 @@ func (this *provider) ReadPacket(conn net.Conn) ([]byte, error) {
 	var buf []byte
 	var err error
 
-	conn.SetDeadline(time.Now().Add(1e9))
+	conn.SetDeadline(time.Now().Add(1e9)) //wait for 1 second
 	if _, err = conn.Read(pkt[:]); err != nil {
 		return nil, err
 	}
