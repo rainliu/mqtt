@@ -166,11 +166,10 @@ func (this *provider) ServeConn(conn net.Conn) {
 		if buf, err = this.ReadPacket(conn); err != nil {
 			if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
 				continue
-			} else if err != io.EOF {
-				log.Println(err)
-				for _, ln := range this.listeners {
-					ln.ProcessIOException(newEventIOException(ss, conn.RemoteAddr()))
-				}
+			}
+			log.Println(err)
+			for _, ln := range this.listeners {
+				ln.ProcessIOException(newEventIOException(ss, conn.RemoteAddr()))
 			}
 			ss.Terminate(err)
 		} else {
