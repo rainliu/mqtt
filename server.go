@@ -50,7 +50,7 @@ func newServerSession(conn net.Conn) *serverSession {
 	this.timeout = make(chan bool)
 	this.packetId = 0
 	this.keepAlive = 0
-	this.keepAliveAccumlated = 0
+	this.keepAliveAccumulated = 0
 
 	return this
 }

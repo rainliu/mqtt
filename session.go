@@ -26,13 +26,13 @@ type Session interface {
 ////////////////////Implementation////////////////////////
 
 type session struct {
-	state               SessionState
-	err                 error
-	ch                  chan bool
-	timeout             chan bool
-	keepAliveAccumlated uint16
-	appData             interface{}
-	retransmitTimer     int
+	state                SessionState
+	err                  error
+	ch                   chan bool
+	timeout              chan bool
+	keepAliveAccumulated uint16
+	appData              interface{}
+	retransmitTimer      int
 }
 
 func (this *session) GetRetransmitTimer() int {

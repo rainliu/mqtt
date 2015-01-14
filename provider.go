@@ -172,8 +172,8 @@ func (this *provider) ServeConn(conn net.Conn) {
 
 		if buf, err = this.ReadPacket(conn); err != nil {
 			if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
-				ss.keepAliveAccumlated += 1 //add 1 second
-				if ss.keepAlive != 0 && ss.keepAliveAccumlated >= (ss.keepAlive*3)/2 {
+				ss.keepAliveAccumulated += 1 //add 1 second
+				if ss.keepAlive != 0 && ss.keepAliveAccumulated >= (ss.keepAlive*3)/2 {
 					ss.timeout <- true
 				}
 				continue
@@ -184,7 +184,7 @@ func (this *provider) ServeConn(conn net.Conn) {
 			}
 			ss.Terminate(err)
 		} else {
-			ss.keepAliveAccumlated = 0
+			ss.keepAliveAccumulated = 0
 			if evt := ss.Process(buf); evt != nil {
 				switch evt.GetEventType() {
 				case EVENT_CONNECT:
