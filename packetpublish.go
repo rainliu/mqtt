@@ -96,22 +96,22 @@ func (this *packet_publish) IParse(buffer []byte) error {
 
 	bufferLength = uint32(len(buffer))
 	if buffer == nil || bufferLength < 5 {
-		return fmt.Errorf("Invalid %x Control Packet Size %x\n", this.packetType, bufferLength)
+		return fmt.Errorf("Invalid %s Control Packet Size %x\n", PACKET_TYPE_STRINGS[this.packetType], bufferLength)
 	}
 
 	//Fixed Header
 	if packetType := PacketType((buffer[0] >> 4) & 0x0F); packetType != this.packetType {
-		return fmt.Errorf("Invalid %x Control Packet Type %x\n", this.packetType, packetType)
+		return fmt.Errorf("Invalid %s Control Packet Type %x\n", PACKET_TYPE_STRINGS[this.packetType], packetType)
 	}
 	this.packetFlag = buffer[0] & 0x0F
 	if (buffer[0]>>1)&0x03 == 0x03 {
-		return fmt.Errorf("Invalid %x Control Packet QoS level %x\n", this.packetType, 0x03)
+		return fmt.Errorf("Invalid %s Control Packet QoS level %x\n", PACKET_TYPE_STRINGS[this.packetType], 0x03)
 	} else {
 		qos = QOS((buffer[0] >> 1) & 0x03)
 	}
 	if (buffer[0]>>3)&0x01 == 0x01 {
 		if qos == QOS_ZERO {
-			return fmt.Errorf("Invalid %x Control Packet DUP flag %x for Qos 0\n", this.packetType, 0x01)
+			return fmt.Errorf("Invalid %s Control Packet DUP flag %x for Qos 0\n", PACKET_TYPE_STRINGS[this.packetType], 0x01)
 		}
 		dup = true
 	} else {
@@ -124,10 +124,10 @@ func (this *packet_publish) IParse(buffer []byte) error {
 	}
 
 	if remainingLength, consumedBytes, err = this.DecodingRemainingLength(buffer[1:]); err != nil {
-		return fmt.Errorf("Invalid %x Control Packet DecodingRemainingLength %s\n", this.packetType, err.Error())
+		return fmt.Errorf("Invalid %s Control Packet DecodingRemainingLength %s\n", PACKET_TYPE_STRINGS[this.packetType], err.Error())
 	}
 	if consumedBytes += 1; bufferLength < consumedBytes+remainingLength {
-		return fmt.Errorf("Invalid %x Control Packet Remaining Length %x\n", this.packetType, remainingLength)
+		return fmt.Errorf("Invalid %s Control Packet Remaining Length %x\n", PACKET_TYPE_STRINGS[this.packetType], remainingLength)
 	}
 	buffer = buffer[:consumedBytes+remainingLength]
 	bufferLength = consumedBytes + remainingLength
@@ -135,7 +135,7 @@ func (this *packet_publish) IParse(buffer []byte) error {
 	//Variable Header
 	topicLength := ((uint32(buffer[consumedBytes])) << 8) | uint32(buffer[consumedBytes+1])
 	if consumedBytes += 2; bufferLength < consumedBytes+topicLength || topicLength == 0 {
-		return fmt.Errorf("Invalid %x Control Packet Topic Length %x\n", this.packetType, topicLength)
+		return fmt.Errorf("Invalid %s Control Packet Topic Length %x\n", PACKET_TYPE_STRINGS[this.packetType], topicLength)
 	}
 
 	topic = string(buffer[consumedBytes : consumedBytes+topicLength])
@@ -143,7 +143,7 @@ func (this *packet_publish) IParse(buffer []byte) error {
 
 	if qos != QOS_ZERO {
 		if bufferLength < consumedBytes+2 {
-			return fmt.Errorf("Invalid %x Control Packet PacketId Length\n", this.packetType)
+			return fmt.Errorf("Invalid %s Control Packet PacketId Length\n", this.packetType)
 		}
 
 		this.packetId = ((uint16(buffer[consumedBytes])) << 8) | uint16(buffer[consumedBytes+1])
@@ -151,7 +151,7 @@ func (this *packet_publish) IParse(buffer []byte) error {
 	}
 
 	if bufferLength < consumedBytes {
-		return fmt.Errorf("Invalid %x Control Packet Payload Length\n", this.packetType)
+		return fmt.Errorf("Invalid %s Control Packet Payload Length\n", this.packetType)
 	}
 
 	//Payload

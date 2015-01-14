@@ -80,21 +80,21 @@ func (this *packet_unsubscribe) IParse(buffer []byte) error {
 	bufferLength = uint32(len(buffer))
 
 	if buffer == nil || bufferLength < 4+3 {
-		return fmt.Errorf("Invalid %x Control Packet Size %x\n", this.packetType, bufferLength)
+		return fmt.Errorf("Invalid %s Control Packet Size %x\n", PACKET_TYPE_STRINGS[this.packetType], bufferLength)
 	}
 
 	//Fixed Header
 	if packetType := PacketType((buffer[0] >> 4) & 0x0F); packetType != this.packetType {
-		return fmt.Errorf("Invalid %x Control Packet Type %x\n", this.packetType, packetType)
+		return fmt.Errorf("Invalid %s Control Packet Type %x\n", PACKET_TYPE_STRINGS[this.packetType], packetType)
 	}
 	if packetFlag := buffer[0] & 0x0F; packetFlag != this.packetFlag {
-		return fmt.Errorf("Invalid %x Control Packet Flags %x\n", this.packetType, packetFlag)
+		return fmt.Errorf("Invalid %s Control Packet Flags %x\n", PACKET_TYPE_STRINGS[this.packetType], packetFlag)
 	}
 	if remainingLength, consumedBytes, err = this.DecodingRemainingLength(buffer[1:]); err != nil {
-		return fmt.Errorf("Invalid %x Control Packet DecodingRemainingLength %s\n", this.packetType, err.Error())
+		return fmt.Errorf("Invalid %s Control Packet DecodingRemainingLength %s\n", PACKET_TYPE_STRINGS[this.packetType], err.Error())
 	}
 	if consumedBytes += 1; bufferLength < consumedBytes+remainingLength {
-		return fmt.Errorf("Invalid %x Control Packet Remaining Length %x\n", this.packetType, remainingLength)
+		return fmt.Errorf("Invalid %s Control Packet Remaining Length %x\n", PACKET_TYPE_STRINGS[this.packetType], remainingLength)
 	}
 	buffer = buffer[:consumedBytes+remainingLength]
 	bufferLength = consumedBytes + remainingLength
@@ -102,18 +102,18 @@ func (this *packet_unsubscribe) IParse(buffer []byte) error {
 	//Variable Header
 	this.packetId = ((uint16(buffer[consumedBytes])) << 8) | uint16(buffer[consumedBytes+1])
 	if consumedBytes += 2; bufferLength < consumedBytes+3 {
-		return fmt.Errorf("Invalid %x Control Packet Must Have at least One Topic\n", this.packetType)
+		return fmt.Errorf("Invalid %s Control Packet Must Have at least One Topic\n", this.packetType)
 	}
 
 	//Payload
 	this.topics = nil
 	for bufferLength > consumedBytes {
 		if bufferLength < consumedBytes+3 {
-			return fmt.Errorf("Invalid %x Control Packet Payload Length\n", this.packetType)
+			return fmt.Errorf("Invalid %s Control Packet Payload Length\n", this.packetType)
 		}
 		topicLength = ((uint32(buffer[consumedBytes])) << 8) | uint32(buffer[consumedBytes+1])
 		if consumedBytes += 2; bufferLength < consumedBytes+topicLength || topicLength == 0 {
-			return fmt.Errorf("Invalid %x Control Packet Topic Length\n", this.packetType)
+			return fmt.Errorf("Invalid %s Control Packet Topic Length\n", this.packetType)
 		}
 
 		this.topics = append(this.topics, string(buffer[consumedBytes:consumedBytes+topicLength]))

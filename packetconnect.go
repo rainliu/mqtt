@@ -141,21 +141,21 @@ func (this *packet_connect) IParse(buffer []byte) error {
 	bufferLength = uint32(len(buffer))
 
 	if buffer == nil || bufferLength < 12 {
-		return fmt.Errorf("Invalid %x Control Packet Size %x\n", this.packetType, bufferLength)
+		return fmt.Errorf("Invalid %s Control Packet Size %x\n", PACKET_TYPE_STRINGS[this.packetType], bufferLength)
 	}
 
 	//Fixed Header
 	if packetType := PacketType((buffer[0] >> 4) & 0x0F); packetType != this.packetType {
-		return fmt.Errorf("Invalid %x Control Packet Type %x\n", this.packetType, packetType)
+		return fmt.Errorf("Invalid %s Control Packet Type %x\n", PACKET_TYPE_STRINGS[this.packetType], packetType)
 	}
 	if packetFlag := buffer[0] & 0x0F; packetFlag != this.packetFlag {
-		return fmt.Errorf("Invalid %x Control Packet Flags %x\n", this.packetType, packetFlag)
+		return fmt.Errorf("Invalid %s Control Packet Flags %x\n", PACKET_TYPE_STRINGS[this.packetType], packetFlag)
 	}
 	if remainingLength, consumedBytes, err = this.DecodingRemainingLength(buffer[1:]); err != nil {
-		return fmt.Errorf("Invalid %x Control Packet DecodingRemainingLength %s\n", this.packetType, err.Error())
+		return fmt.Errorf("Invalid %s Control Packet DecodingRemainingLength %s\n", PACKET_TYPE_STRINGS[this.packetType], err.Error())
 	}
 	if consumedBytes += 1; bufferLength < consumedBytes+remainingLength {
-		return fmt.Errorf("Invalid %x Control Packet Remaining Length %x\n", this.packetType, remainingLength)
+		return fmt.Errorf("Invalid %s Control Packet Remaining Length %x\n", PACKET_TYPE_STRINGS[this.packetType], remainingLength)
 	}
 	buffer = buffer[:consumedBytes+remainingLength]
 	bufferLength = consumedBytes + remainingLength
@@ -164,29 +164,29 @@ func (this *packet_connect) IParse(buffer []byte) error {
 	protocolLength := ((uint32(buffer[consumedBytes])) << 8) | uint32(buffer[consumedBytes+1])
 	consumedBytes += 2
 	if this.protocolName = string(buffer[consumedBytes : consumedBytes+protocolLength]); this.protocolName != "MQTT" {
-		return fmt.Errorf("Invalid %x Control Packet Protocol Name %s\n", this.packetType, this.protocolName)
+		return fmt.Errorf("Invalid %s Control Packet Protocol Name %s\n", PACKET_TYPE_STRINGS[this.packetType], this.protocolName)
 	}
 	consumedBytes += protocolLength
 
 	this.protocolLevel = buffer[consumedBytes] /*this.protocolLevel != 4 {
-		return fmt.Errorf("Invalid %x Control Packet Protocol Level %x\n", this.packetType, this.protocolLevel)
+		return fmt.Errorf("Invalid %s Control Packet Protocol Level %x\n", PACKET_TYPE_STRINGS[this.packetType], this.protocolLevel)
 	}*/
 	consumedBytes += 1
 
 	if this.connectFlags = buffer[consumedBytes]; (this.connectFlags & CONNECT_FLAG_RESERVED) != 0 {
-		return fmt.Errorf("Invalid %x Control Packet Connect Flags Reserved Bit\n", this.packetType)
+		return fmt.Errorf("Invalid %s Control Packet Connect Flags Reserved Bit\n", this.packetType)
 	}
 	if (this.connectFlags & CONNECT_FLAG_WILL_FLAG) == 0 {
 		if (this.connectFlags & (CONNECT_FLAG_WILL_QOS_BIT3 | CONNECT_FLAG_WILL_QOS_BIT4)) != 0 {
-			return fmt.Errorf("Invalid %x Control Packet Connect Flags QoS %x for WillFlag=0\n", this.packetType, (this.connectFlags&(CONNECT_FLAG_WILL_QOS_BIT3|CONNECT_FLAG_WILL_QOS_BIT4))>>3)
+			return fmt.Errorf("Invalid %s Control Packet Connect Flags QoS %x for WillFlag=0\n", PACKET_TYPE_STRINGS[this.packetType], (this.connectFlags&(CONNECT_FLAG_WILL_QOS_BIT3|CONNECT_FLAG_WILL_QOS_BIT4))>>3)
 		}
 		if (this.connectFlags & CONNECT_FLAG_WILL_RETAIN) != 0 {
-			return fmt.Errorf("Invalid %x Control Packet Connect Flags Retain for WillFlag=0\n", this.packetType)
+			return fmt.Errorf("Invalid %s Control Packet Connect Flags Retain for WillFlag=0\n", this.packetType)
 		}
 	}
 	if (this.connectFlags & CONNECT_FLAG_WILL_FLAG) != 0 {
 		if (this.connectFlags & (CONNECT_FLAG_WILL_QOS_BIT3 | CONNECT_FLAG_WILL_QOS_BIT4)) == (CONNECT_FLAG_WILL_QOS_BIT3 | CONNECT_FLAG_WILL_QOS_BIT4) {
-			return fmt.Errorf("Invalid %x Control Packet Connect Flags QoS %x for WillFlag=1\n", this.packetType, (this.connectFlags&(CONNECT_FLAG_WILL_QOS_BIT3|CONNECT_FLAG_WILL_QOS_BIT4))>>3)
+			return fmt.Errorf("Invalid %s Control Packet Connect Flags QoS %x for WillFlag=1\n", PACKET_TYPE_STRINGS[this.packetType], (this.connectFlags&(CONNECT_FLAG_WILL_QOS_BIT3|CONNECT_FLAG_WILL_QOS_BIT4))>>3)
 		}
 	}
 	consumedBytes += 1
@@ -196,19 +196,19 @@ func (this *packet_connect) IParse(buffer []byte) error {
 
 	//Payload
 	if this.clientId, utf8Bytes, err = this.DecodingUTF8(buffer[consumedBytes:]); err != nil {
-		return fmt.Errorf("Invalid %x Control Packet ClientId DecodingUTF8 %s\n", this.packetType, err.Error())
+		return fmt.Errorf("Invalid %s Control Packet ClientId DecodingUTF8 %s\n", PACKET_TYPE_STRINGS[this.packetType], err.Error())
 	}
 	consumedBytes += utf8Bytes
 
 	//Will Flag bit 2
 	if (this.connectFlags & CONNECT_FLAG_WILL_FLAG) != 0 {
 		if this.willTopic, utf8Bytes, err = this.DecodingUTF8(buffer[consumedBytes:]); err != nil {
-			return fmt.Errorf("Invalid %x Control Packet WillTopic DecodingUTF8 %s\n", this.packetType, err.Error())
+			return fmt.Errorf("Invalid %s Control Packet WillTopic DecodingUTF8 %s\n", PACKET_TYPE_STRINGS[this.packetType], err.Error())
 		}
 		consumedBytes += utf8Bytes
 
 		if this.willMessage, utf8Bytes, err = this.DecodingUTF8(buffer[consumedBytes:]); err != nil {
-			return fmt.Errorf("Invalid %x Control Packet WillMessage DecodingUTF8 %s\n", this.packetType, err.Error())
+			return fmt.Errorf("Invalid %s Control Packet WillMessage DecodingUTF8 %s\n", PACKET_TYPE_STRINGS[this.packetType], err.Error())
 		}
 		consumedBytes += utf8Bytes
 	} else {
@@ -219,7 +219,7 @@ func (this *packet_connect) IParse(buffer []byte) error {
 	//UserName Flag bit 7
 	if (this.connectFlags & CONNECT_FLAG_USERNAME_FLAG) != 0 {
 		if this.userName, utf8Bytes, err = this.DecodingUTF8(buffer[consumedBytes:]); err != nil {
-			return fmt.Errorf("Invalid %x Control Packet UserName DecodingUTF8 %s\n", this.packetType, err.Error())
+			return fmt.Errorf("Invalid %s Control Packet UserName DecodingUTF8 %s\n", PACKET_TYPE_STRINGS[this.packetType], err.Error())
 		}
 		consumedBytes += utf8Bytes
 	} else {
@@ -229,7 +229,7 @@ func (this *packet_connect) IParse(buffer []byte) error {
 	//Password Flag bit 6
 	if (this.connectFlags & CONNECT_FLAG_PASSWORD_FLAG) != 0 {
 		if this.password, utf8Bytes, err = this.DecodingBinary(buffer[consumedBytes:]); err != nil {
-			return fmt.Errorf("Invalid %x Control Packet Password DecodingBinary %s\n", this.packetType, err.Error())
+			return fmt.Errorf("Invalid %s Control Packet Password DecodingBinary %s\n", PACKET_TYPE_STRINGS[this.packetType], err.Error())
 		}
 		consumedBytes += utf8Bytes
 	} else {
