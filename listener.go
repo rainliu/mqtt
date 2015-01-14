@@ -3,9 +3,6 @@ package mqtt
 ////////////////////Interface//////////////////////////////
 
 type Listener interface {
-	ProcessSessionCreated(eventSessionCreated EventSessionCreated)
-	ProcessSessionTerminated(eventSessionTerminated EventSessionTerminated)
-
 	ProcessConnect(eventConnect EventConnect)
 	ProcessPublish(eventPublish EventPublish)
 	ProcessSubscribe(eventSubscribe EventSubscribe)
@@ -13,6 +10,7 @@ type Listener interface {
 
 	ProcessTimeout(eventTimeout EventTimeout)
 	ProcessIOException(eventIOException EventIOException)
+	ProcessSessionTerminated(eventSessionTerminated EventSessionTerminated)
 }
 
 ////////////////////Implementation////////////////////////

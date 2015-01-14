@@ -53,9 +53,13 @@ func newServerSession(conn net.Conn) *serverSession {
 }
 
 func (this *serverSession) Forward(msg Message) error {
-	//TODO: how to filter topic?
-	_, err := this.conn.Write(msg.Packetize(this.packetId).Bytes())
-	return err
+	if this.state == SESSION_STATE_CONNECT {
+		//TODO: how to filter topic?
+		_, err := this.conn.Write(msg.Packetize(this.packetId).Bytes())
+		return err
+	} else {
+		return errors.New("Invalid ServerSession State\n")
+	}
 }
 
 func (this *serverSession) Respond(spFlag bool, retCode CONNACK_RETURNCODE) error {
@@ -148,7 +152,7 @@ func (this *serverSession) ProcessConnect(pkgconn PacketConnect) Event {
 
 		this.state = SESSION_STATE_TERMINATED
 		this.err = fmt.Errorf("Invalid %x Control Packet Protocol Level %x\n", pkgconn.GetType(), pkgconn.GetProtocolLevel())
-		return newEventSession(EVENT_SESSION_TERMINATED, this, this.Error())
+		return newEventSessionTerminated(this, this.Error())
 	} else {
 		this.connectFlags = pkgconn.GetConnectFlags()
 		this.keepAlive = pkgconn.GetKeepAlive()
@@ -201,5 +205,5 @@ func (this *serverSession) ProcessUnsubscribe(pktunsub PacketUnsubscribe) Event 
 func (this *serverSession) ProcessTerminate(msg string) Event {
 	this.state = SESSION_STATE_TERMINATED
 	this.err = errors.New(msg)
-	return newEventSession(EVENT_SESSION_TERMINATED, this, msg)
+	return newEventSessionTerminated(this, msg)
 }

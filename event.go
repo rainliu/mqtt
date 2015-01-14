@@ -7,16 +7,14 @@ import "net"
 type EventType int
 
 const (
-	EVENT_SESSION_CREATED EventType = iota
-	EVENT_SESSION_TERMINATED
-
-	EVENT_CONNECT
+	EVENT_CONNECT EventType = iota
 	EVENT_PUBLISH
 	EVENT_SUBSCRIBE
 	EVENT_UNSUBSCRIBE
 
 	EVENT_TIMEOUT
 	EVENT_IOEXCEPTION
+	EVENT_SESSION_TERMINATED
 )
 
 type TimeoutType int
@@ -29,12 +27,6 @@ const (
 type Event interface {
 	GetEventType() EventType
 	GetSession() Session
-}
-
-type EventSessionCreated interface {
-	Event
-
-	GetReason() string
 }
 
 type EventSessionTerminated interface {
@@ -105,23 +97,23 @@ func (this *event) GetSession() Session {
 	return this.session
 }
 
-type event_session struct {
+type event_session_terminated struct {
 	event
 
 	reason string
 }
 
-func newEventSession(e EventType, s Session, r string) *event_session {
-	this := &event_session{}
+func newEventSessionTerminated(s Session, r string) *event_session_terminated {
+	this := &event_session_terminated{}
 
-	this.eventType = e
+	this.eventType = EVENT_SESSION_TERMINATED
 	this.session = s
 	this.reason = r
 
 	return this
 }
 
-func (this *event_session) GetReason() string {
+func (this *event_session_terminated) GetReason() string {
 	return this.reason
 }
 

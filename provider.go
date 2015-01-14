@@ -147,20 +147,16 @@ func (this *provider) ServeConn(conn net.Conn) {
 	defer this.waitGroup.Done()
 
 	ss := newServerSession(conn)
-
 	this.serverSessions[ss] = ss
-	for _, ln := range this.listeners {
-		ln.ProcessSessionCreated(newEventSession(EVENT_SESSION_CREATED, ss, "New Connection Coming"))
-	}
 
 	var buf []byte
 	var err error
 	for {
 		select {
 		case <-ss.ch:
-			log.Println("disconnecting", conn.RemoteAddr())
+			log.Println("Disconnecting", conn.RemoteAddr())
 			for _, ln := range this.listeners {
-				ln.ProcessSessionTerminated(newEventSession(EVENT_SESSION_TERMINATED, ss, ss.Error()))
+				ln.ProcessSessionTerminated(newEventSessionTerminated(ss, ss.Error()))
 			}
 			delete(this.serverSessions, ss)
 			return
