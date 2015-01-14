@@ -172,6 +172,7 @@ func (this *provider) ServeConn(conn net.Conn) {
 
 		if buf, err = this.ReadPacket(conn); err != nil {
 			if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
+				//log.Println("Timeout ", ss.keepAliveAccumulated, ss.keepAlive)
 				ss.keepAliveAccumulated += 1 //add 1 second
 				if ss.keepAlive != 0 && ss.keepAliveAccumulated >= (ss.keepAlive*3)/2 {
 					//ss.timeout <- true

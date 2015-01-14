@@ -3,6 +3,7 @@ package mqtt
 import (
 	"errors"
 	"fmt"
+	"log"
 	"net"
 )
 
@@ -12,7 +13,7 @@ type ServerSession interface {
 	Session
 
 	Forward(msg Message) error
-	Respond(spFlag bool, retCode CONNACK_RETURNCODE) error
+	Acknowledge(pkt PacketAcks) error
 }
 
 ////////////////////Implementation////////////////////////
@@ -37,8 +38,12 @@ type serverSession struct {
 	qos    []QOS
 
 	//others
-	packetId             uint16
+	packetId uint16
+
+	//private
 	keepAliveAccumulated uint16
+	topicsToBeAdded      []string
+	qosToBeAdded         []QOS
 }
 
 func newServerSession(conn net.Conn) *serverSession {
@@ -66,26 +71,47 @@ func (this *serverSession) Forward(msg Message) error {
 	}
 }
 
-func (this *serverSession) Respond(spFlag bool, retCode CONNACK_RETURNCODE) error {
-	if this.state == SESSION_STATE_CREATED {
-		pkgconnack := NewPacketConnack()
-		pkgconnack.SetReturnCode(retCode)
-		if retCode != CONNACK_RETURNCODE_ACCEPTED {
-			pkgconnack.SetSPFlag(false)
-		} else {
-			pkgconnack.SetSPFlag(spFlag)
+func (this *serverSession) Acknowledge(pkt PacketAcks) error {
+	switch this.state {
+	case SESSION_STATE_CREATED:
+		pkgconnack, ok := pkt.(PacketConnack)
+		if !ok {
+			return errors.New("Invalid PacketConnack in SESSION_STATE_CREATED\n")
 		}
 		if _, err := this.conn.Write(pkgconnack.Bytes()); err != nil {
 			return err
+		} else {
+			log.Println("SENT CONNACK")
 		}
-		if retCode == CONNACK_RETURNCODE_ACCEPTED {
+		if pkgconnack.GetReturnCode() == CONNACK_RETURNCODE_ACCEPTED {
 			this.state = SESSION_STATE_CONNECT
 		} else {
 			this.state = SESSION_STATE_TERMINATED
-			this.err = fmt.Errorf("Listener Refused Connection with Return Code %x\n", retCode)
+			this.err = fmt.Errorf("Listener Refused Connection with Return Code %x\n", pkgconnack.GetReturnCode())
 		}
 		return nil
-	} else {
+	case SESSION_STATE_CONNECT:
+		pkgsuback, ok := pkt.(PacketSuback)
+		if !ok {
+			return errors.New("Invalid PacketSuback in SESSION_STATE_CONNECT\n")
+		}
+		if retCodes := pkgsuback.GetReturnCodes(); len(this.qosToBeAdded) != len(retCodes) {
+			return errors.New("Invalid Return Codes Length in PacketSuback\n")
+		} else {
+			for i := 0; i < len(retCodes); i++ {
+				if retCodes[i] <= 0x02 {
+					this.topics = append(this.topics, this.topicsToBeAdded[i])
+					this.qos = append(this.qos, QOS(retCodes[i]))
+				}
+			}
+		}
+		if _, err := this.conn.Write(pkgsuback.Bytes()); err != nil {
+			return err
+		} else {
+			log.Println("SENT SUBACK")
+		}
+		return nil
+	default:
 		return errors.New("Invalid ServerSession State\n")
 	}
 }
@@ -121,8 +147,13 @@ func (this *serverSession) Process(buf []byte) Event {
 		case PACKET_UNSUBSCRIBE:
 			return this.ProcessUnsubscribe(pkt.(PacketUnsubscribe))
 		case PACKET_PINGREQ:
+			log.Println("PINGREQ Packet Received")
 			pkgpingresp := NewPacket(PACKET_PINGRESP)
-			this.conn.Write(pkgpingresp.Bytes())
+			if _, err := this.conn.Write(pkgpingresp.Bytes()); err != nil {
+				log.Printf(err.Error())
+			} else {
+				log.Println("SENT PINGRESP")
+			}
 		case PACKET_DISCONNECT:
 			return this.ProcessTerminate("DISCONNECT Packet Received\n")
 		default:
@@ -186,16 +217,13 @@ func (this *serverSession) ProcessPublish(pktpub PacketPublish) Event {
 }
 
 func (this *serverSession) ProcessSubscribe(pktsub PacketSubscribe) Event {
-	this.topics = pktsub.GetSubscribeTopics()
-	this.qos = pktsub.GetQoSs()
-	returnCodes := make([]byte, len(this.topics))
+	this.topicsToBeAdded = make([]string, len(pktsub.GetSubscribeTopics()))
+	copy(this.topicsToBeAdded, pktsub.GetSubscribeTopics())
 
-	pkgsuback := NewPacketSuback()
-	pkgsuback.SetPacketId(pktsub.GetPacketId())
-	pkgsuback.SetReturnCodes(returnCodes)
-	this.conn.Write(pkgsuback.Bytes())
+	this.qosToBeAdded = make([]QOS, len(pktsub.GetQoSs()))
+	copy(this.qosToBeAdded, pktsub.GetQoSs())
 
-	return newEventSubscribe(this, this.topics, this.qos)
+	return newEventSubscribe(this, pktsub.GetPacketId(), pktsub.GetSubscribeTopics(), pktsub.GetQoSs())
 }
 
 func (this *serverSession) ProcessUnsubscribe(pktunsub PacketUnsubscribe) Event {

@@ -2,12 +2,14 @@ package mqtt
 
 ////////////////////Interface//////////////////////////////
 
-type QOS int
+type QOS byte
 
 const (
 	QOS_ZERO QOS = iota
 	QOS_ONE
 	QOS_TWO
+	QOS_RESERVED
+	QOS_FAILURE QOS = 0x80
 )
 
 type Message interface {

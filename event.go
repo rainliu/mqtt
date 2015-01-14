@@ -56,6 +56,7 @@ type EventPublish interface {
 type EventSubscribe interface {
 	Event
 
+	GetPacketId() uint16
 	GetSubscribeTopics() []string
 	GetQoSs() []QOS
 }
@@ -198,20 +199,26 @@ func (this *event_publish) GetMessage() Message {
 type event_subscribe struct {
 	event
 
-	topics []string
-	qos    []QOS
+	packetid uint16
+	topics   []string
+	qos      []QOS
 }
 
-func newEventSubscribe(s Session, t []string, q []QOS) *event_subscribe {
+func newEventSubscribe(s Session, p uint16, t []string, q []QOS) *event_subscribe {
 	this := &event_subscribe{}
 
 	this.eventType = EVENT_SUBSCRIBE
 	this.session = s
 
+	this.packetid = p
 	this.topics = t
 	this.qos = q
 
 	return this
+}
+
+func (this *event_subscribe) GetPacketId() uint16 {
+	return this.packetid
 }
 
 func (this *event_subscribe) GetSubscribeTopics() []string {

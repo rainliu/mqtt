@@ -44,14 +44,14 @@ type PacketSuback interface {
 }
 
 type PacketConnack interface {
-	Packet
+	PacketAcks
 
 	//Variable Header
 	GetSPFlag() bool
 	SetSPFlag(b bool)
 
-	GetReturnCode() byte
-	SetReturnCode(c byte)
+	GetReturnCode() CONNACK_RETURNCODE
+	SetReturnCode(c CONNACK_RETURNCODE)
 }
 
 ////////////////////Implementation////////////////////////
@@ -225,7 +225,7 @@ const (
 )
 
 type packet_connack struct {
-	packet
+	packet_acks
 
 	spFlag     byte
 	returnCode CONNACK_RETURNCODE

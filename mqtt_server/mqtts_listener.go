@@ -15,13 +15,30 @@ func newListener(provider mqtt.Provider) *mqtts_listener {
 func (this *mqtts_listener) ProcessConnect(eventConnect mqtt.EventConnect) {
 	log.Println("Received CONNECT")
 	serverSession := eventConnect.GetSession().(mqtt.ServerSession)
-	serverSession.Respond(false, mqtt.CONNACK_RETURNCODE_ACCEPTED)
+
+	pktconnack := mqtt.NewPacketConnack()
+	pktconnack.SetSPFlag(false)
+	pktconnack.SetReturnCode(mqtt.CONNACK_RETURNCODE_ACCEPTED)
+
+	serverSession.Acknowledge(pktconnack)
 }
 func (this *mqtts_listener) ProcessPublish(eventPublish mqtt.EventPublish) {
 
 }
 func (this *mqtts_listener) ProcessSubscribe(eventSubscribe mqtt.EventSubscribe) {
+	log.Printf("Received SUBSCRIBE with %v", eventSubscribe.GetSubscribeTopics())
+	serverSession := eventSubscribe.GetSession().(mqtt.ServerSession)
 
+	pktsuback := mqtt.NewPacketSuback()
+	pktsuback.SetPacketId(eventSubscribe.GetPacketId())
+	qos := eventSubscribe.GetQoSs()
+	retCodes := make([]byte, len(qos))
+	for i := 0; i < len(qos); i++ {
+		retCodes[i] = byte(qos[i])
+	}
+	pktsuback.SetReturnCodes(retCodes)
+
+	serverSession.Acknowledge(pktsuback)
 }
 func (this *mqtts_listener) ProcessUnsubscribe(eventUnsubscribe mqtt.EventUnsubscribe) {
 
