@@ -20,7 +20,7 @@ func (this *mqtts_listener) ProcessConnect(eventConnect mqtt.EventConnect) {
 	pktconnack.SetSPFlag(false)
 	pktconnack.SetReturnCode(mqtt.CONNACK_RETURNCODE_ACCEPTED)
 
-	serverSession.Acknowledge(pktconnack)
+	serverSession.AcknowledgeConnect(pktconnack)
 }
 func (this *mqtts_listener) ProcessPublish(eventPublish mqtt.EventPublish) {
 	log.Printf("Received Publish with DUP %v QoS %v RETAIN %v Topic: %v Content: %v\n",
@@ -45,7 +45,7 @@ func (this *mqtts_listener) ProcessSubscribe(eventSubscribe mqtt.EventSubscribe)
 	}
 	pktsuback.SetReturnCodes(retCodes)
 
-	serverSession.Acknowledge(pktsuback)
+	serverSession.AcknowledgeSubscribe(pktsuback)
 }
 func (this *mqtts_listener) ProcessUnsubscribe(eventUnsubscribe mqtt.EventUnsubscribe) {
 	log.Printf("Received UNSUBSCRIBE with %v", eventUnsubscribe.GetUnsubscribeTopics())

@@ -13,7 +13,8 @@ type ServerSession interface {
 	Session
 
 	Forward(msg Message) error
-	Acknowledge(pktack PacketAck) error
+	AcknowledgeConnect(pktconnack PacketConnack) error
+	AcknowledgeSubscribe(pktsuback PacketSuback) error
 }
 
 ////////////////////Implementation////////////////////////
@@ -81,36 +82,35 @@ func (this *serverSession) Forward(msg Message) error {
 	return nil
 }
 
-func (this *serverSession) Acknowledge(pktack PacketAck) error {
+func (this *serverSession) AcknowledgeConnect(pktconnack PacketConnack) error {
 	switch this.state {
 	case SESSION_STATE_CREATED:
-		pkgconnack, ok := pktack.(PacketConnack)
-		if !ok {
-			return errors.New("Invalid PacketConnack in SESSION_STATE_CREATED\n")
-		}
-		if _, err := this.conn.Write(pkgconnack.Bytes()); err != nil {
+		if _, err := this.conn.Write(pktconnack.Bytes()); err != nil {
 			log.Println(err.Error())
 			return err
 		} else {
 			log.Println("SENT CONNACK")
 		}
-		if pkgconnack.GetReturnCode() == CONNACK_RETURNCODE_ACCEPTED {
+		if pktconnack.GetReturnCode() == CONNACK_RETURNCODE_ACCEPTED {
 			this.state = SESSION_STATE_CONNECTED
 		} else {
 			this.state = SESSION_STATE_TERMINATED
-			this.err = fmt.Errorf("Listener Refused Connection with Return Code %x\n", pkgconnack.GetReturnCode())
+			this.err = fmt.Errorf("Listener Refused Connection with Return Code %x\n", pktconnack.GetReturnCode())
 		}
 		return nil
+	default:
+		return errors.New("Invalid ServerSession State\n")
+	}
+}
+
+func (this *serverSession) AcknowledgeSubscribe(pktsuback PacketSuback) error {
+	switch this.state {
 	case SESSION_STATE_CONNECTED:
-		pkgsuback, ok := pktack.(PacketSuback)
-		if !ok {
-			return errors.New("Invalid PacketSuback in SESSION_STATE_CONNECT\n")
-		}
-		retCodes := pkgsuback.GetReturnCodes()
+		retCodes := pktsuback.GetReturnCodes()
 		if len(this.qosToBeAdded) != len(retCodes) {
 			return errors.New("Invalid Return Codes Length in PacketSuback\n")
 		}
-		if _, err := this.conn.Write(pkgsuback.Bytes()); err != nil {
+		if _, err := this.conn.Write(pktsuback.Bytes()); err != nil {
 			log.Println(err.Error())
 			return err
 		} else {
