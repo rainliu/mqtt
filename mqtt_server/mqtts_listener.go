@@ -23,7 +23,11 @@ func (this *mqtts_listener) ProcessConnect(eventConnect mqtt.EventConnect) {
 	serverSession.Acknowledge(pktconnack)
 }
 func (this *mqtts_listener) ProcessPublish(eventPublish mqtt.EventPublish) {
-
+	log.Printf("Received Publish with DUP %v QoS %v RETAIN %v Topic: %v\n",
+		eventPublish.GetMessage().GetDup(),
+		eventPublish.GetMessage().GetQos(),
+		eventPublish.GetMessage().GetRetain(),
+		eventPublish.GetMessage().GetTopic())
 }
 func (this *mqtts_listener) ProcessSubscribe(eventSubscribe mqtt.EventSubscribe) {
 	log.Printf("Received SUBSCRIBE with %v", eventSubscribe.GetSubscribeTopics())
