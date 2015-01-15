@@ -98,21 +98,21 @@ func (this *serverSession) Acknowledge(pkt PacketAcks) error {
 		if !ok {
 			return errors.New("Invalid PacketSuback in SESSION_STATE_CONNECT\n")
 		}
-		if retCodes := pkgsuback.GetReturnCodes(); len(this.qosToBeAdded) != len(retCodes) {
+		retCodes := pkgsuback.GetReturnCodes()
+		if len(this.qosToBeAdded) != len(retCodes) {
 			return errors.New("Invalid Return Codes Length in PacketSuback\n")
-		} else {
-			for i := 0; i < len(retCodes); i++ {
-				if retCodes[i] <= 0x02 {
-					this.topics[this.topicsToBeAdded[i]] = this.topicsToBeAdded[i]
-					this.qos[this.topicsToBeAdded[i]] = QOS(retCodes[i])
-				}
-			}
 		}
 		if _, err := this.conn.Write(pkgsuback.Bytes()); err != nil {
 			log.Println(err.Error())
 			return err
 		} else {
 			log.Println("SENT SUBACK")
+		}
+		for i := 0; i < len(retCodes); i++ {
+			if retCodes[i] <= 0x02 {
+				this.topics[this.topicsToBeAdded[i]] = this.topicsToBeAdded[i]
+				this.qos[this.topicsToBeAdded[i]] = QOS(retCodes[i])
+			}
 		}
 		return nil
 	default:
