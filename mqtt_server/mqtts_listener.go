@@ -41,11 +41,11 @@ func (this *mqtts_listener) ProcessSubscribe(eventSubscribe mqtt.EventSubscribe)
 	serverSession.Acknowledge(pktsuback)
 }
 func (this *mqtts_listener) ProcessUnsubscribe(eventUnsubscribe mqtt.EventUnsubscribe) {
-
+	log.Printf("Received UNSUBSCRIBE with %v", eventUnsubscribe.GetUnsubscribeTopics())
 }
 
 func (this *mqtts_listener) ProcessTimeout(eventTimeout mqtt.EventTimeout) {
-
+	log.Println("Received Timeout")
 }
 func (this *mqtts_listener) ProcessIOException(eventIOException mqtt.EventIOException) {
 	log.Println("Received IOException")

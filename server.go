@@ -34,8 +34,8 @@ type serverSession struct {
 	pubPacketId uint16
 
 	//Subscribe
-	topics []string
-	qos    []QOS
+	topics map[string]string
+	qos    map[string]QOS
 
 	//others
 	packetId uint16
@@ -57,6 +57,8 @@ func newServerSession(conn net.Conn) *serverSession {
 	this.packetId = 0
 	this.keepAlive = 0
 	this.keepAliveAccumulated = 0
+	this.topics = make(map[string]string)
+	this.qos = make(map[string]QOS)
 
 	return this
 }
@@ -79,6 +81,7 @@ func (this *serverSession) Acknowledge(pkt PacketAcks) error {
 			return errors.New("Invalid PacketConnack in SESSION_STATE_CREATED\n")
 		}
 		if _, err := this.conn.Write(pkgconnack.Bytes()); err != nil {
+			log.Println(err.Error())
 			return err
 		} else {
 			log.Println("SENT CONNACK")
@@ -100,12 +103,13 @@ func (this *serverSession) Acknowledge(pkt PacketAcks) error {
 		} else {
 			for i := 0; i < len(retCodes); i++ {
 				if retCodes[i] <= 0x02 {
-					this.topics = append(this.topics, this.topicsToBeAdded[i])
-					this.qos = append(this.qos, QOS(retCodes[i]))
+					this.topics[this.topicsToBeAdded[i]] = this.topicsToBeAdded[i]
+					this.qos[this.topicsToBeAdded[i]] = QOS(retCodes[i])
 				}
 			}
 		}
 		if _, err := this.conn.Write(pkgsuback.Bytes()); err != nil {
+			log.Println(err.Error())
 			return err
 		} else {
 			log.Println("SENT SUBACK")
@@ -150,7 +154,7 @@ func (this *serverSession) Process(buf []byte) Event {
 			log.Println("PINGREQ Packet Received")
 			pkgpingresp := NewPacket(PACKET_PINGRESP)
 			if _, err := this.conn.Write(pkgpingresp.Bytes()); err != nil {
-				log.Printf(err.Error())
+				log.Println(err.Error())
 			} else {
 				log.Println("SENT PINGRESP")
 			}
@@ -168,7 +172,11 @@ func (this *serverSession) Process(buf []byte) Event {
 				this.state = SESSION_STATE_CONNECT
 				pkgpubcomp := NewPacketAcks(PACKET_PUBCOMP)
 				pkgpubcomp.SetPacketId(this.pubPacketId)
-				this.conn.Write(pkgpubcomp.Bytes())
+				if _, err := this.conn.Write(pkgpubcomp.Bytes()); err != nil {
+					log.Println(err.Error())
+				} else {
+					log.Println("SENT PUBCOMP")
+				}
 			}
 		default:
 			return this.ProcessTerminate(fmt.Sprintf("Unexpected %x Packet Received\n", pkt.GetType()))
@@ -185,7 +193,11 @@ func (this *serverSession) ProcessConnect(pkgconn PacketConnect) Event {
 		pkgconnack := NewPacketConnack()
 		pkgconnack.SetSPFlag(false)
 		pkgconnack.SetReturnCode(CONNACK_RETURNCODE_REFUSED_UNACCEPTABLE_PROTOCOL_VERSION)
-		this.conn.Write(pkgconnack.Bytes())
+		if _, err := this.conn.Write(pkgconnack.Bytes()); err != nil {
+			log.Println(err.Error())
+		} else {
+			log.Println("SENT CONNACK")
+		}
 
 		this.state = SESSION_STATE_TERMINATED
 		this.err = fmt.Errorf("Invalid %x Control Packet Protocol Level %x\n", pkgconn.GetType(), pkgconn.GetProtocolLevel())
@@ -205,13 +217,21 @@ func (this *serverSession) ProcessPublish(pktpub PacketPublish) Event {
 	if qos == QOS_TWO {
 		this.state = SESSION_STATE_PUBLISH
 		this.pubPacketId = pktpub.GetPacketId()
-		pkgpuback := NewPacketAcks(PACKET_PUBREC)
-		pkgpuback.SetPacketId(this.pubPacketId)
-		this.conn.Write(pkgpuback.Bytes())
+		pkgpubrec := NewPacketAcks(PACKET_PUBREC)
+		pkgpubrec.SetPacketId(this.pubPacketId)
+		if _, err := this.conn.Write(pkgpubrec.Bytes()); err != nil {
+			log.Println(err.Error())
+		} else {
+			log.Println("SENT PUBREC")
+		}
 	} else if qos == QOS_ONE {
 		pkgpuback := NewPacketAcks(PACKET_PUBACK)
 		pkgpuback.SetPacketId(pktpub.GetPacketId())
-		this.conn.Write(pkgpuback.Bytes())
+		if _, err := this.conn.Write(pkgpuback.Bytes()); err != nil {
+			log.Println(err.Error())
+		} else {
+			log.Println("SENT PUBACK")
+		}
 	}
 	return newEventPublish(this, pktpub.GetMessage())
 }
@@ -228,10 +248,18 @@ func (this *serverSession) ProcessSubscribe(pktsub PacketSubscribe) Event {
 
 func (this *serverSession) ProcessUnsubscribe(pktunsub PacketUnsubscribe) Event {
 	topics := pktunsub.GetUnsubscribeTopics()
+	for i := 0; i < len(topics); i++ {
+		delete(this.topics, topics[i])
+		delete(this.qos, topics[i])
+	}
 
 	pkgsuback := NewPacketAcks(PACKET_UNSUBACK)
 	pkgsuback.SetPacketId(pktunsub.GetPacketId())
-	this.conn.Write(pkgsuback.Bytes())
+	if _, err := this.conn.Write(pkgsuback.Bytes()); err != nil {
+		log.Println(err.Error())
+	} else {
+		log.Println("SENT UNSUBACK")
+	}
 
 	return newEventUnsubscribe(this, topics)
 }
