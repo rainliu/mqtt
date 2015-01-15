@@ -29,12 +29,6 @@ type Event interface {
 	GetSession() Session
 }
 
-type EventSessionTerminated interface {
-	Event
-
-	GetReason() string
-}
-
 type EventConnect interface {
 	Event
 
@@ -79,6 +73,13 @@ type EventIOException interface {
 	GetRemoteAddr() net.Addr
 }
 
+type EventSessionTerminated interface {
+	Event
+
+	GetReason() string
+	GetWillMessage() Message
+}
+
 ////////////////////Implementation////////////////////////
 
 type event struct {
@@ -96,26 +97,6 @@ func (this *event) GetEventType() EventType {
 
 func (this *event) GetSession() Session {
 	return this.session
-}
-
-type event_session_terminated struct {
-	event
-
-	reason string
-}
-
-func newEventSessionTerminated(s Session, r string) *event_session_terminated {
-	this := &event_session_terminated{}
-
-	this.eventType = EVENT_SESSION_TERMINATED
-	this.session = s
-	this.reason = r
-
-	return this
-}
-
-func (this *event_session_terminated) GetReason() string {
-	return this.reason
 }
 
 type event_connect struct {
@@ -289,4 +270,30 @@ func newEventIOException(s Session, addr net.Addr) *event_ioexception {
 
 func (this *event_ioexception) GetRemoteAddr() net.Addr {
 	return this.addr
+}
+
+type event_session_terminated struct {
+	event
+
+	reason string
+	will   Message
+}
+
+func newEventSessionTerminated(s Session, r string, w Message) *event_session_terminated {
+	this := &event_session_terminated{}
+
+	this.eventType = EVENT_SESSION_TERMINATED
+	this.session = s
+	this.reason = r
+	this.will = w
+
+	return this
+}
+
+func (this *event_session_terminated) GetReason() string {
+	return this.reason
+}
+
+func (this *event_session_terminated) GetWillMessage() Message {
+	return this.will
 }

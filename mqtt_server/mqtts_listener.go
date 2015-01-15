@@ -58,5 +58,15 @@ func (this *mqtts_listener) ProcessIOException(eventIOException mqtt.EventIOExce
 	log.Println("Received IOException")
 }
 func (this *mqtts_listener) ProcessSessionTerminated(eventSessionTerminated mqtt.EventSessionTerminated) {
-	log.Println("Session Terminated with Reason: ", eventSessionTerminated.GetReason())
+	if eventSessionTerminated.GetWillMessage() != nil {
+		log.Printf("Session Terminated with Reason: %s with WillMessage: DUP %v QoS %v RETAIN %v Topic: %v Content: %v\n",
+			eventSessionTerminated.GetReason(),
+			eventSessionTerminated.GetWillMessage().GetDup(),
+			eventSessionTerminated.GetWillMessage().GetQos(),
+			eventSessionTerminated.GetWillMessage().GetRetain(),
+			eventSessionTerminated.GetWillMessage().GetTopic(),
+			eventSessionTerminated.GetWillMessage().GetContent())
+	} else {
+		log.Println("Session Terminated with Reason: ", eventSessionTerminated.GetReason(), "without WillMessage!")
+	}
 }

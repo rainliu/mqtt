@@ -165,7 +165,7 @@ func (this *provider) ServeConn(conn net.Conn) {
 		case <-ss.quit:
 			log.Println("Disconnecting", conn.RemoteAddr())
 			for _, ln := range this.listeners {
-				ln.ProcessSessionTerminated(newEventSessionTerminated(ss, ss.Error()))
+				ln.ProcessSessionTerminated(newEventSessionTerminated(ss, ss.Error(), ss.Will()))
 			}
 			delete(this.serverSessions, ss)
 			return
@@ -211,10 +211,6 @@ func (this *provider) ServeConn(conn net.Conn) {
 				case EVENT_UNSUBSCRIBE:
 					for _, ln := range this.listeners {
 						ln.ProcessUnsubscribe(evt.(EventUnsubscribe))
-					}
-				case EVENT_TIMEOUT:
-					for _, ln := range this.listeners {
-						ln.ProcessTimeout(evt.(EventTimeout))
 					}
 				case EVENT_IOEXCEPTION:
 					for _, ln := range this.listeners {

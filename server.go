@@ -12,6 +12,7 @@ import (
 type ServerSession interface {
 	Session
 
+	Will() Message
 	Forward(msg Message) error
 	AcknowledgeConnect(pktconnack PacketConnack) error
 	AcknowledgeSubscribe(pktsuback PacketSuback) error
@@ -43,6 +44,7 @@ type serverSession struct {
 	keepAliveAccumulated uint16
 	topicsToBeAdded      []string
 	qosToBeAdded         []QOS
+	will                 Message
 }
 
 func newServerSession(conn net.Conn) *serverSession {
@@ -58,6 +60,7 @@ func newServerSession(conn net.Conn) *serverSession {
 	this.keepAliveAccumulated = 0
 	this.topics = make(map[string]string)
 	this.qos = make(map[string]QOS)
+	this.will = nil
 
 	return this
 }
@@ -146,12 +149,12 @@ func (this *serverSession) Process(buf []byte) Event {
 		case PACKET_CONNECT:
 			return this.ProcessConnect(pkt.(PacketConnect))
 		default:
-			return this.ProcessTerminate("Invalid First CONNECT Packet Received\n")
+			return this.ProcessTerminate("Invalid First CONNECT Packet Received\n", false)
 		}
 	case SESSION_STATE_CONNECTED:
 		switch pkt.GetType() {
 		case PACKET_CONNECT:
-			return this.ProcessTerminate("Invalid Second or Multiple CONNECT Packets Received\n")
+			return this.ProcessTerminate("Invalid Second or Multiple CONNECT Packets Received\n", false)
 		case PACKET_PUBLISH:
 			return this.ProcessPublish(pkt.(PacketPublish))
 		case PACKET_SUBSCRIBE:
@@ -166,12 +169,10 @@ func (this *serverSession) Process(buf []byte) Event {
 			} else {
 				log.Println("SENT PINGRESP")
 			}
-		case PACKET_DISCONNECT:
-			return this.ProcessTerminate("DISCONNECT Packet Received\n")
 		case PACKET_PUBREL:
 			clientPacketId := uint32(pkt.(PacketPubrel).GetPacketId()) << 16
 			if _, ok := this.PacketIds[clientPacketId]; !ok {
-				return this.ProcessTerminate(fmt.Sprintf("Invalid PubRel PacketId %x Received\n", clientPacketId>>16))
+				return this.ProcessTerminate(fmt.Sprintf("Invalid PubRel PacketId %x Received\n", clientPacketId>>16), false)
 			} else {
 				delete(this.PacketIds, clientPacketId)
 				pkgpubcomp := NewPacketAcks(PACKET_PUBCOMP)
@@ -185,14 +186,14 @@ func (this *serverSession) Process(buf []byte) Event {
 		case PACKET_PUBACK:
 			serverPacketId := uint32(pkt.(PacketPuback).GetPacketId())
 			if _, ok := this.PacketIds[serverPacketId]; !ok {
-				return this.ProcessTerminate(fmt.Sprintf("Invalid PubAck PacketId %x Received\n", serverPacketId))
+				return this.ProcessTerminate(fmt.Sprintf("Invalid PubAck PacketId %x Received\n", serverPacketId), false)
 			} else {
 				delete(this.PacketIds, serverPacketId)
 			}
 		case PACKET_PUBREC:
 			serverPacketId := uint32(pkt.(PacketPuback).GetPacketId())
 			if _, ok := this.PacketIds[serverPacketId]; !ok {
-				return this.ProcessTerminate(fmt.Sprintf("Invalid PubRec PacketId %x Received\n", serverPacketId))
+				return this.ProcessTerminate(fmt.Sprintf("Invalid PubRec PacketId %x Received\n", serverPacketId), false)
 			} else {
 				pkgpubrel := NewPacketAcks(PACKET_PUBREL)
 				pkgpubrel.SetPacketId(uint16(serverPacketId))
@@ -205,12 +206,14 @@ func (this *serverSession) Process(buf []byte) Event {
 		case PACKET_PUBCOMP:
 			serverPacketId := uint32(pkt.(PacketPuback).GetPacketId())
 			if _, ok := this.PacketIds[serverPacketId]; !ok {
-				return this.ProcessTerminate(fmt.Sprintf("Invalid PubComp PacketId %x Received\n", serverPacketId))
+				return this.ProcessTerminate(fmt.Sprintf("Invalid PubComp PacketId %x Received\n", serverPacketId), false)
 			} else {
 				delete(this.PacketIds, serverPacketId)
 			}
+		case PACKET_DISCONNECT:
+			return this.ProcessTerminate("DISCONNECT Packet Received\n", true)
 		default:
-			return this.ProcessTerminate(fmt.Sprintf("Unexpected %s Packet Received\n", PACKET_TYPE_STRINGS[pkt.GetType()]))
+			return this.ProcessTerminate(fmt.Sprintf("Unexpected %s Packet Received\n", PACKET_TYPE_STRINGS[pkt.GetType()]), false)
 		}
 	case SESSION_STATE_TERMINATED:
 	default:
@@ -232,13 +235,30 @@ func (this *serverSession) ProcessConnect(pkgconn PacketConnect) Event {
 
 		this.state = SESSION_STATE_TERMINATED
 		this.err = fmt.Errorf("Invalid %x Control Packet Protocol Level %x\n", pkgconn.GetType(), pkgconn.GetProtocolLevel())
-		return newEventSessionTerminated(this, this.Error())
+		return newEventSessionTerminated(this, this.Error(), nil)
 	} else {
 		this.connectFlags = pkgconn.GetConnectFlags()
 		this.keepAlive = pkgconn.GetKeepAlive()
 		this.clientId = pkgconn.GetClientId()
 		this.willTopic = pkgconn.GetWillTopic()
 		this.willMessage = pkgconn.GetWillMessage()
+		//fmt.Printf("%v\n", []byte(this.willMessage))
+		if (this.connectFlags & CONNECT_FLAG_WILL_FLAG) != 0 {
+			var retain bool
+			if (this.connectFlags & CONNECT_FLAG_WILL_RETAIN) != 0 {
+				retain = true
+			} else {
+				retain = false
+			}
+			this.will = NewMessage(false,
+				QOS((this.connectFlags&(CONNECT_FLAG_WILL_QOS_BIT3|CONNECT_FLAG_WILL_QOS_BIT4))>>3),
+				retain,
+				this.willTopic,
+				this.willMessage)
+		} else {
+			this.will = nil
+		}
+
 		return newEventConnect(this, pkgconn)
 	}
 }
@@ -296,8 +316,15 @@ func (this *serverSession) ProcessUnsubscribe(pktunsub PacketUnsubscribe) Event 
 	return newEventUnsubscribe(this, topics)
 }
 
-func (this *serverSession) ProcessTerminate(msg string) Event {
+func (this *serverSession) ProcessTerminate(msg string, disconnected bool) Event {
+	if disconnected {
+		this.will = nil
+	}
 	this.state = SESSION_STATE_TERMINATED
 	this.err = errors.New(msg)
-	return newEventSessionTerminated(this, msg)
+	return newEventSessionTerminated(this, msg, this.will)
+}
+
+func (this *serverSession) Will() Message {
+	return this.will
 }
