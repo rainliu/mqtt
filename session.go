@@ -25,11 +25,9 @@ type Session interface {
 ////////////////////Implementation////////////////////////
 
 type session struct {
-	state SessionState
-	err   error
-	ch    chan bool
-	//timeout              chan bool
-	//keepAliveAccumulated uint16
+	state           SessionState
+	err             error
+	ch              chan bool
 	appData         interface{}
 	retransmitTimer int
 }

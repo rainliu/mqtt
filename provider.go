@@ -160,22 +160,14 @@ func (this *provider) ServeConn(conn net.Conn) {
 			}
 			delete(this.serverSessions, ss)
 			return
-		// case <-ss.timeout:
-		// 	log.Println("Timeout", conn.RemoteAddr())
-		// 	for _, ln := range this.listeners {
-		// 		ln.ProcessTimeout(newEventTimeout(ss, TIMEOUT_SESSION))
-		// 	}
-		// 	ss.Terminate(errors.New("Timeout"))
 		default:
 			//can't delete default, otherwise blocking call
 		}
 
 		if buf, err = this.ReadPacket(conn); err != nil {
 			if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
-				//log.Println("Timeout ", ss.keepAliveAccumulated, ss.keepAlive)
 				ss.keepAliveAccumulated += 1 //add 1 second
 				if ss.keepAlive != 0 && ss.keepAliveAccumulated >= (ss.keepAlive*3)/2 {
-					//ss.timeout <- true
 					log.Println("Timeout", conn.RemoteAddr())
 					for _, ln := range this.listeners {
 						ln.ProcessTimeout(newEventTimeout(ss, TIMEOUT_SESSION))

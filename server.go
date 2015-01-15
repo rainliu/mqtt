@@ -51,7 +51,6 @@ func newServerSession(conn net.Conn) *serverSession {
 	this.err = nil
 	this.state = SESSION_STATE_CREATED
 	this.ch = make(chan bool)
-	//this.timeout = make(chan bool)
 	this.packetId = 1
 	this.PacketIds = make(map[uint32]uint16)
 	this.keepAlive = 0
@@ -172,7 +171,7 @@ func (this *serverSession) Process(buf []byte) Event {
 		case PACKET_PUBREL:
 			clientPacketId := uint32(pkt.(PacketPubrel).GetPacketId()) << 16
 			if _, ok := this.PacketIds[clientPacketId]; !ok {
-				return this.ProcessTerminate(fmt.Sprintf("Invalid PubRel PacketId %x Received\n", clientPacketId))
+				return this.ProcessTerminate(fmt.Sprintf("Invalid PubRel PacketId %x Received\n", clientPacketId>>16))
 			} else {
 				delete(this.PacketIds, clientPacketId)
 				pkgpubcomp := NewPacketAcks(PACKET_PUBCOMP)
