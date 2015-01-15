@@ -31,9 +31,8 @@ type serverSession struct {
 	willMessage  string
 
 	//Publish
-	serverPacketId uint16
-	clientPacketId uint16
-	PacketIds      map[uint32]uint16
+	packetId  uint16
+	PacketIds map[uint32]uint16
 
 	//Subscribe
 	topics map[string]string
@@ -53,8 +52,7 @@ func newServerSession(conn net.Conn) *serverSession {
 	this.state = SESSION_STATE_CREATED
 	this.ch = make(chan bool)
 	//this.timeout = make(chan bool)
-	this.clientPacketId = 1
-	this.serverPacketId = 1
+	this.packetId = 1
 	this.PacketIds = make(map[uint32]uint16)
 	this.keepAlive = 0
 	this.keepAliveAccumulated = 0
@@ -65,18 +63,17 @@ func newServerSession(conn net.Conn) *serverSession {
 }
 
 func (this *serverSession) Forward(msg Message) error {
-	if this.state == SESSION_STATE_CONNECT || this.state == SESSION_STATE_PUBLISH {
+	if this.state == SESSION_STATE_CONNECTED {
 		if _, ok := this.topics[msg.GetTopic()]; ok {
-			if _, err := this.conn.Write(msg.Packetize(this.serverPacketId).Bytes()); err != nil {
+			if _, err := this.conn.Write(msg.Packetize(this.packetId).Bytes()); err != nil {
 				log.Println(err.Error())
 				return err
 			}
 
 			if msg.GetQos() == QOS_TWO || msg.GetQos() == QOS_ONE {
-				this.state = SESSION_STATE_PUBLISH
-				this.PacketIds[uint32(this.serverPacketId)] = this.serverPacketId
-				if this.serverPacketId++; this.serverPacketId == 0 {
-					this.serverPacketId++
+				this.PacketIds[uint32(this.packetId)] = this.packetId
+				if this.packetId++; this.packetId == 0 {
+					this.packetId++
 				}
 			}
 		}
@@ -99,13 +96,13 @@ func (this *serverSession) Acknowledge(pktack PacketAck) error {
 			log.Println("SENT CONNACK")
 		}
 		if pkgconnack.GetReturnCode() == CONNACK_RETURNCODE_ACCEPTED {
-			this.state = SESSION_STATE_CONNECT
+			this.state = SESSION_STATE_CONNECTED
 		} else {
 			this.state = SESSION_STATE_TERMINATED
 			this.err = fmt.Errorf("Listener Refused Connection with Return Code %x\n", pkgconnack.GetReturnCode())
 		}
 		return nil
-	case SESSION_STATE_CONNECT:
+	case SESSION_STATE_CONNECTED:
 		pkgsuback, ok := pktack.(PacketSuback)
 		if !ok {
 			return errors.New("Invalid PacketSuback in SESSION_STATE_CONNECT\n")
@@ -152,7 +149,7 @@ func (this *serverSession) Process(buf []byte) Event {
 		default:
 			return this.ProcessTerminate("Invalid First CONNECT Packet Received\n")
 		}
-	case SESSION_STATE_CONNECT:
+	case SESSION_STATE_CONNECTED:
 		switch pkt.GetType() {
 		case PACKET_CONNECT:
 			return this.ProcessTerminate("Invalid Second or Multiple CONNECT Packets Received\n")
@@ -172,20 +169,14 @@ func (this *serverSession) Process(buf []byte) Event {
 			}
 		case PACKET_DISCONNECT:
 			return this.ProcessTerminate("DISCONNECT Packet Received\n")
-		default:
-			return this.ProcessTerminate(fmt.Sprintf("Unexpected %s Packet Received\n", PACKET_TYPE_STRINGS[pkt.GetType()]))
-		}
-	case SESSION_STATE_PUBLISH:
-		switch pkt.GetType() {
 		case PACKET_PUBREL:
-			if pkt.(PacketPubrel).GetPacketId() != this.clientPacketId {
-				return this.ProcessTerminate(fmt.Sprintf("Invalid PubRel PacketId %x Received\n", pkt.(PacketPubrec).GetPacketId()))
+			clientPacketId := uint32(pkt.(PacketPubrel).GetPacketId()) << 16
+			if _, ok := this.PacketIds[clientPacketId]; !ok {
+				return this.ProcessTerminate(fmt.Sprintf("Invalid PubRel PacketId %x Received\n", clientPacketId))
 			} else {
-				if delete(this.PacketIds, uint32(this.clientPacketId)<<16); len(this.PacketIds) == 0 {
-					this.state = SESSION_STATE_CONNECT
-				}
+				delete(this.PacketIds, clientPacketId)
 				pkgpubcomp := NewPacketAcks(PACKET_PUBCOMP)
-				pkgpubcomp.SetPacketId(this.clientPacketId)
+				pkgpubcomp.SetPacketId(uint16(clientPacketId >> 16))
 				if _, err := this.conn.Write(pkgpubcomp.Bytes()); err != nil {
 					log.Println(err.Error())
 				} else {
@@ -197,9 +188,7 @@ func (this *serverSession) Process(buf []byte) Event {
 			if _, ok := this.PacketIds[serverPacketId]; !ok {
 				return this.ProcessTerminate(fmt.Sprintf("Invalid PubAck PacketId %x Received\n", serverPacketId))
 			} else {
-				if delete(this.PacketIds, serverPacketId); len(this.PacketIds) == 0 {
-					this.state = SESSION_STATE_CONNECT
-				}
+				delete(this.PacketIds, serverPacketId)
 			}
 		case PACKET_PUBREC:
 			serverPacketId := uint32(pkt.(PacketPuback).GetPacketId())
@@ -219,9 +208,7 @@ func (this *serverSession) Process(buf []byte) Event {
 			if _, ok := this.PacketIds[serverPacketId]; !ok {
 				return this.ProcessTerminate(fmt.Sprintf("Invalid PubComp PacketId %x Received\n", serverPacketId))
 			} else {
-				if delete(this.PacketIds, serverPacketId); len(this.PacketIds) == 0 {
-					this.state = SESSION_STATE_CONNECT
-				}
+				delete(this.PacketIds, serverPacketId)
 			}
 		default:
 			return this.ProcessTerminate(fmt.Sprintf("Unexpected %s Packet Received\n", PACKET_TYPE_STRINGS[pkt.GetType()]))
@@ -260,11 +247,10 @@ func (this *serverSession) ProcessConnect(pkgconn PacketConnect) Event {
 func (this *serverSession) ProcessPublish(pktpub PacketPublish) Event {
 	qos := pktpub.GetMessage().GetQos()
 	if qos == QOS_TWO {
-		this.state = SESSION_STATE_PUBLISH
-		this.clientPacketId = pktpub.GetPacketId()
-		this.PacketIds[uint32(this.clientPacketId)<<16] = this.clientPacketId
+		clientPacketId := pktpub.GetPacketId()
+		this.PacketIds[uint32(clientPacketId)<<16] = clientPacketId
 		pkgpubrec := NewPacketAcks(PACKET_PUBREC)
-		pkgpubrec.SetPacketId(this.clientPacketId)
+		pkgpubrec.SetPacketId(clientPacketId)
 		if _, err := this.conn.Write(pkgpubrec.Bytes()); err != nil {
 			log.Println(err.Error())
 		} else {
