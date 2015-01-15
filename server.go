@@ -26,11 +26,9 @@ type serverSession struct {
 	conn net.Conn
 
 	//Connect
-	connectFlags byte
-	keepAlive    uint16
-	clientId     string
-	willTopic    string
-	willMessage  string
+	keepAlive uint16
+	clientId  string
+	will      Message
 
 	//Publish
 	packetId  uint16
@@ -44,7 +42,6 @@ type serverSession struct {
 	keepAliveAccumulated uint16
 	topicsToBeAdded      []string
 	qosToBeAdded         []QOS
-	will                 Message
 }
 
 func newServerSession(conn net.Conn) *serverSession {
@@ -237,24 +234,25 @@ func (this *serverSession) ProcessConnect(pkgconn PacketConnect) Event {
 		this.err = fmt.Errorf("Invalid %x Control Packet Protocol Level %x\n", pkgconn.GetType(), pkgconn.GetProtocolLevel())
 		return newEventSessionTerminated(this, this.Error(), nil)
 	} else {
-		this.connectFlags = pkgconn.GetConnectFlags()
 		this.keepAlive = pkgconn.GetKeepAlive()
 		this.clientId = pkgconn.GetClientId()
-		this.willTopic = pkgconn.GetWillTopic()
-		this.willMessage = pkgconn.GetWillMessage()
-		//fmt.Printf("%v\n", []byte(this.willMessage))
-		if (this.connectFlags & CONNECT_FLAG_WILL_FLAG) != 0 {
+
+		connectFlags := pkgconn.GetConnectFlags()
+		willTopic := pkgconn.GetWillTopic()
+		willMessage := pkgconn.GetWillMessage()
+
+		if (connectFlags & CONNECT_FLAG_WILL_FLAG) != 0 {
 			var retain bool
-			if (this.connectFlags & CONNECT_FLAG_WILL_RETAIN) != 0 {
+			if (connectFlags & CONNECT_FLAG_WILL_RETAIN) != 0 {
 				retain = true
 			} else {
 				retain = false
 			}
 			this.will = NewMessage(false,
-				QOS((this.connectFlags&(CONNECT_FLAG_WILL_QOS_BIT3|CONNECT_FLAG_WILL_QOS_BIT4))>>3),
+				QOS((connectFlags&(CONNECT_FLAG_WILL_QOS_BIT3|CONNECT_FLAG_WILL_QOS_BIT4))>>3),
 				retain,
-				this.willTopic,
-				this.willMessage)
+				willTopic,
+				willMessage)
 			this.will.SetClientId(this.clientId)
 		} else {
 			this.will = nil
