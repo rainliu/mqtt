@@ -51,7 +51,7 @@ func newServerSession(conn net.Conn) *serverSession {
 	this.conn = conn
 	this.err = nil
 	this.state = SESSION_STATE_CREATED
-	this.ch = make(chan bool)
+	this.quit = make(chan bool)
 	this.packetId = 1
 	this.PacketIds = make(map[uint32]uint16)
 	this.keepAlive = 0

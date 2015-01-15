@@ -52,7 +52,7 @@ type transport struct {
 
 	//for server
 	lner net.Listener
-	ch   chan bool
+	quit chan bool
 }
 
 func newTransport(network string, address string, port int, tlsc *tls.Config) *transport {
@@ -64,7 +64,7 @@ func newTransport(network string, address string, port int, tlsc *tls.Config) *t
 	this.tlsc = tlsc
 
 	this.lner = nil
-	this.ch = make(chan bool)
+	this.quit = make(chan bool)
 
 	return this
 }
@@ -146,8 +146,7 @@ func (this *transport) Accept() (net.Conn, error) {
 
 func (this *transport) Close() {
 	if this.lner != nil {
-		close(this.ch)
-		this.lner.Close()
+		close(this.quit)
 	}
 }
 

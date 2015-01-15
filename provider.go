@@ -35,6 +35,7 @@ type provider struct {
 	serverSessions   map[ServerSession]*serverSession
 
 	ch        chan Message
+	quit      chan bool
 	waitGroup *sync.WaitGroup
 }
 
@@ -46,6 +47,8 @@ func newProvider() *provider {
 	this.clientSessions = make(map[ClientSession]*clientSession)
 	this.serverSessions = make(map[ServerSession]*serverSession)
 
+	this.ch = make(chan Message)
+	this.quit = make(chan bool)
 	this.waitGroup = &sync.WaitGroup{}
 
 	return this
@@ -100,6 +103,8 @@ func (this *provider) DeleteClientSession(cs ClientSession) {
 }
 
 func (this *provider) Run() {
+	this.waitGroup.Add(1)
+	go this.ServeForward()
 	for _, st := range this.serverTransports {
 		if err := st.Listen(); err != nil {
 			log.Printf("Listening %s://%s:%d Failed!!!\n", st.GetNetwork(), st.GetAddress(), st.GetPort())
@@ -112,20 +117,23 @@ func (this *provider) Run() {
 }
 
 func (this *provider) Stop() {
-	for _, st := range this.serverTransports {
-		st.Close()
-	}
+	this.quit <- true
 	for _, ss := range this.serverSessions {
 		ss.Terminate(errors.New("Provider Stopped\n"))
+	}
+	for _, st := range this.serverTransports {
+		st.Close()
 	}
 	this.waitGroup.Wait()
 }
 
 func (this *provider) ServeAccept(st *transport) {
 	defer this.waitGroup.Done()
+	defer st.lner.Close()
+
 	for {
 		select {
-		case <-st.ch:
+		case <-st.quit:
 			log.Printf("Listening %s://%s:%d Stoped!!!\n", st.GetNetwork(), st.GetAddress(), st.GetPort())
 			return
 		default:
@@ -144,8 +152,8 @@ func (this *provider) ServeAccept(st *transport) {
 }
 
 func (this *provider) ServeConn(conn net.Conn) {
-	defer conn.Close()
 	defer this.waitGroup.Done()
+	defer conn.Close()
 
 	ss := newServerSession(conn)
 	this.serverSessions[ss] = ss
@@ -154,7 +162,7 @@ func (this *provider) ServeConn(conn net.Conn) {
 	var err error
 	for {
 		select {
-		case <-ss.ch:
+		case <-ss.quit:
 			log.Println("Disconnecting", conn.RemoteAddr())
 			for _, ln := range this.listeners {
 				ln.ProcessSessionTerminated(newEventSessionTerminated(ss, ss.Error()))
@@ -221,16 +229,29 @@ func (this *provider) ServeConn(conn net.Conn) {
 	}
 }
 
-//Change to FanIn channel
-func (this *provider) Forward(msg Message) {
-	for _, ss := range this.serverSessions {
-		if err := ss.Forward(msg); err != nil {
-			log.Println(err)
-			for _, ln := range this.listeners {
-				ln.ProcessIOException(newEventIOException(ss, ss.conn.RemoteAddr()))
+func (this *provider) ServeForward() {
+	defer this.waitGroup.Done()
+
+	for {
+		select {
+		case msg := <-this.ch:
+			for _, ss := range this.serverSessions {
+				if err := ss.Forward(msg); err != nil {
+					log.Println(err)
+					for _, ln := range this.listeners {
+						ln.ProcessIOException(newEventIOException(ss, ss.conn.RemoteAddr()))
+					}
+				}
 			}
+		case <-this.quit:
+			log.Println("ServeForward Quit")
+			return
 		}
 	}
+}
+
+func (this *provider) Forward(msg Message) {
+	this.ch <- msg
 }
 
 func (this *provider) ReadPacket(conn net.Conn) ([]byte, error) {

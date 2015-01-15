@@ -27,7 +27,7 @@ type Session interface {
 type session struct {
 	state           SessionState
 	err             error
-	ch              chan bool
+	quit            chan bool
 	appData         interface{}
 	retransmitTimer int
 }
@@ -51,7 +51,7 @@ func (this *session) Error() string {
 func (this *session) Terminate(err error) {
 	this.state = SESSION_STATE_TERMINATED
 	this.err = err
-	close(this.ch)
+	close(this.quit)
 }
 
 func (this *session) GetAppData() interface{} {
