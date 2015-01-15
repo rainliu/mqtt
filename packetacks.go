@@ -108,7 +108,9 @@ func (this *packet_ack) IParse(buffer []byte) error {
 		return fmt.Errorf("Invalid %s Control Packet Remaining Length %x\n", PACKET_TYPE_STRINGS[this.packetType], buffer[1])
 	}
 
-	this.packetId = ((uint16(buffer[2])) << 8) | uint16(buffer[3])
+	if this.packetId = ((uint16(buffer[2])) << 8) | uint16(buffer[3]); this.packetId == 0 {
+		return fmt.Errorf("Invalid %s Control Packet PacketId 0\n", PACKET_TYPE_STRINGS[this.packetType])
+	}
 
 	return nil
 }
@@ -186,7 +188,9 @@ func (this *packet_suback) IParse(buffer []byte) error {
 	bufferLength = consumedBytes + remainingLength
 
 	//Variable Header
-	this.packetId = ((uint16(buffer[consumedBytes])) << 8) | uint16(buffer[consumedBytes+1])
+	if this.packetId = ((uint16(buffer[consumedBytes])) << 8) | uint16(buffer[consumedBytes+1]); this.packetId == 0 {
+		return fmt.Errorf("Invalid %s Control Packet PacketId 0\n", PACKET_TYPE_STRINGS[this.packetType])
+	}
 	if consumedBytes += 2; bufferLength < consumedBytes+1 {
 		return fmt.Errorf("Invalid %s Control Packet Must Have at least One Return Code\n", PACKET_TYPE_STRINGS[this.packetType])
 	}

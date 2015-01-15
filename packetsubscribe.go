@@ -105,9 +105,11 @@ func (this *packet_subscribe) IParse(buffer []byte) error {
 	bufferLength = consumedBytes + remainingLength
 
 	//Variable Header
-	this.packetId = ((uint16(buffer[consumedBytes])) << 8) | uint16(buffer[consumedBytes+1])
+	if this.packetId = ((uint16(buffer[consumedBytes])) << 8) | uint16(buffer[consumedBytes+1]); this.packetId == 0 {
+		return fmt.Errorf("Invalid %s Control Packet PacketId 0\n", PACKET_TYPE_STRINGS[this.packetType])
+	}
 	if consumedBytes += 2; bufferLength < consumedBytes+4 {
-		return fmt.Errorf("Invalid %s Control Packet Payload Length\n", this.packetType)
+		return fmt.Errorf("Invalid %s Control Packet Payload Length\n", PACKET_TYPE_STRINGS[this.packetType])
 	}
 
 	//Payload
@@ -121,11 +123,11 @@ func (this *packet_subscribe) IParse(buffer []byte) error {
 
 		this.topics = append(this.topics, string(buffer[consumedBytes:consumedBytes+topicLength]))
 		if consumedBytes += topicLength; bufferLength < consumedBytes+1 {
-			return fmt.Errorf("Invalid %s Control Packet QoS Length\n", this.packetType)
+			return fmt.Errorf("Invalid %s Control Packet QoS Length\n", PACKET_TYPE_STRINGS[this.packetType])
 		}
 
 		if buffer[consumedBytes] > 2 {
-			return fmt.Errorf("Invalid %s Control Packet QoS Level\n", this.packetType)
+			return fmt.Errorf("Invalid %s Control Packet QoS Level\n", PACKET_TYPE_STRINGS[this.packetType])
 		}
 		this.qos = append(this.qos, QOS(buffer[consumedBytes]))
 		consumedBytes += 1

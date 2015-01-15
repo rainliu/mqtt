@@ -2,7 +2,7 @@ package mqtt
 
 ////////////////////Interface//////////////////////////////
 
-type SessionState int
+type SessionState byte
 
 const (
 	SESSION_STATE_CREATED SessionState = iota

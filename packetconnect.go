@@ -174,14 +174,14 @@ func (this *packet_connect) IParse(buffer []byte) error {
 	consumedBytes += 1
 
 	if this.connectFlags = buffer[consumedBytes]; (this.connectFlags & CONNECT_FLAG_RESERVED) != 0 {
-		return fmt.Errorf("Invalid %s Control Packet Connect Flags Reserved Bit\n", this.packetType)
+		return fmt.Errorf("Invalid %s Control Packet Connect Flags Reserved Bit\n", PACKET_TYPE_STRINGS[this.packetType])
 	}
 	if (this.connectFlags & CONNECT_FLAG_WILL_FLAG) == 0 {
 		if (this.connectFlags & (CONNECT_FLAG_WILL_QOS_BIT3 | CONNECT_FLAG_WILL_QOS_BIT4)) != 0 {
 			return fmt.Errorf("Invalid %s Control Packet Connect Flags QoS %x for WillFlag=0\n", PACKET_TYPE_STRINGS[this.packetType], (this.connectFlags&(CONNECT_FLAG_WILL_QOS_BIT3|CONNECT_FLAG_WILL_QOS_BIT4))>>3)
 		}
 		if (this.connectFlags & CONNECT_FLAG_WILL_RETAIN) != 0 {
-			return fmt.Errorf("Invalid %s Control Packet Connect Flags Retain for WillFlag=0\n", this.packetType)
+			return fmt.Errorf("Invalid %s Control Packet Connect Flags Retain for WillFlag=0\n", PACKET_TYPE_STRINGS[this.packetType])
 		}
 	}
 	if (this.connectFlags & CONNECT_FLAG_WILL_FLAG) != 0 {

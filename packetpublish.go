@@ -143,15 +143,18 @@ func (this *packet_publish) IParse(buffer []byte) error {
 
 	if qos != QOS_ZERO {
 		if bufferLength < consumedBytes+2 {
-			return fmt.Errorf("Invalid %s Control Packet PacketId Length\n", this.packetType)
+			return fmt.Errorf("Invalid %s Control Packet PacketId Length\n", PACKET_TYPE_STRINGS[this.packetType])
 		}
 
-		this.packetId = ((uint16(buffer[consumedBytes])) << 8) | uint16(buffer[consumedBytes+1])
+		if this.packetId = ((uint16(buffer[consumedBytes])) << 8) | uint16(buffer[consumedBytes+1]); this.packetId == 0 {
+			return fmt.Errorf("Invalid %s Control Packet PacketId 0\n", PACKET_TYPE_STRINGS[this.packetType])
+		}
+
 		consumedBytes += 2
 	}
 
 	if bufferLength < consumedBytes {
-		return fmt.Errorf("Invalid %s Control Packet Payload Length\n", this.packetType)
+		return fmt.Errorf("Invalid %s Control Packet Payload Length\n", PACKET_TYPE_STRINGS[this.packetType])
 	}
 
 	//Payload
