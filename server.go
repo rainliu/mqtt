@@ -13,7 +13,7 @@ type ServerSession interface {
 	Session
 
 	Forward(msg Message) error
-	Acknowledge(pkt PacketAck) error
+	Acknowledge(pktack PacketAck) error
 }
 
 ////////////////////Implementation////////////////////////
@@ -73,10 +73,10 @@ func (this *serverSession) Forward(msg Message) error {
 	}
 }
 
-func (this *serverSession) Acknowledge(pkt PacketAck) error {
+func (this *serverSession) Acknowledge(pktack PacketAck) error {
 	switch this.state {
 	case SESSION_STATE_CREATED:
-		pkgconnack, ok := pkt.(PacketConnack)
+		pkgconnack, ok := pktack.(PacketConnack)
 		if !ok {
 			return errors.New("Invalid PacketConnack in SESSION_STATE_CREATED\n")
 		}
@@ -94,7 +94,7 @@ func (this *serverSession) Acknowledge(pkt PacketAck) error {
 		}
 		return nil
 	case SESSION_STATE_CONNECT:
-		pkgsuback, ok := pkt.(PacketSuback)
+		pkgsuback, ok := pktack.(PacketSuback)
 		if !ok {
 			return errors.New("Invalid PacketSuback in SESSION_STATE_CONNECT\n")
 		}
