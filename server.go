@@ -255,6 +255,7 @@ func (this *serverSession) ProcessConnect(pkgconn PacketConnect) Event {
 				retain,
 				this.willTopic,
 				this.willMessage)
+			this.will.SetClientId(this.clientId)
 		} else {
 			this.will = nil
 		}

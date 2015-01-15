@@ -66,6 +66,8 @@ func (this *mqtts_listener) ProcessSessionTerminated(eventSessionTerminated mqtt
 			eventSessionTerminated.GetWillMessage().GetRetain(),
 			eventSessionTerminated.GetWillMessage().GetTopic(),
 			eventSessionTerminated.GetWillMessage().GetContent())
+
+		this.provider.Forward(eventSessionTerminated.GetWillMessage())
 	} else {
 		log.Println("Session Terminated with Reason: ", eventSessionTerminated.GetReason(), "without WillMessage!")
 	}
