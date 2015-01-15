@@ -13,7 +13,7 @@ type ServerSession interface {
 	Session
 
 	Forward(msg Message) error
-	Acknowledge(pkt PacketAcks) error
+	Acknowledge(pkt PacketAck) error
 }
 
 ////////////////////Implementation////////////////////////
@@ -73,7 +73,7 @@ func (this *serverSession) Forward(msg Message) error {
 	}
 }
 
-func (this *serverSession) Acknowledge(pkt PacketAcks) error {
+func (this *serverSession) Acknowledge(pkt PacketAck) error {
 	switch this.state {
 	case SESSION_STATE_CREATED:
 		pkgconnack, ok := pkt.(PacketConnack)

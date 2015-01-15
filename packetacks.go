@@ -7,7 +7,7 @@ import (
 
 ////////////////////Interface//////////////////////////////
 
-type PacketAcks interface {
+type PacketAck interface {
 	Packet
 
 	//Variable Header
@@ -16,27 +16,27 @@ type PacketAcks interface {
 }
 
 type PacketPuback interface {
-	PacketAcks
+	PacketAck
 }
 
 type PacketPubrec interface {
-	PacketAcks
+	PacketAck
 }
 
 type PacketPubrel interface {
-	PacketAcks
+	PacketAck
 }
 
 type PacketPubcomp interface {
-	PacketAcks
+	PacketAck
 }
 
 type PacketUnsuback interface {
-	PacketAcks
+	PacketAck
 }
 
 type PacketSuback interface {
-	PacketAcks
+	PacketAck
 
 	//Payload
 	GetReturnCodes() []byte
@@ -44,7 +44,7 @@ type PacketSuback interface {
 }
 
 type PacketConnack interface {
-	PacketAcks
+	PacketAck
 
 	//Variable Header
 	GetSPFlag() bool
@@ -56,18 +56,18 @@ type PacketConnack interface {
 
 ////////////////////Implementation////////////////////////
 
-type packet_acks struct {
+type packet_ack struct {
 	packet
 
 	packetId uint16
 }
 
-func NewPacketAcks(pt PacketType) *packet_acks {
+func NewPacketAcks(pt PacketType) *packet_ack {
 	if !(pt == PACKET_PUBACK || pt == PACKET_PUBREC || pt == PACKET_PUBREL || pt == PACKET_PUBCOMP || pt == PACKET_UNSUBACK) {
 		return nil
 	}
 
-	this := packet_acks{}
+	this := packet_ack{}
 
 	this.IBytizer = &this
 	this.IParser = &this
@@ -82,7 +82,7 @@ func NewPacketAcks(pt PacketType) *packet_acks {
 	return &this
 }
 
-func (this *packet_acks) IBytize() []byte {
+func (this *packet_ack) IBytize() []byte {
 	var buffer bytes.Buffer
 
 	buffer.WriteByte((byte(this.packetType) << 4) | (this.packetFlag & 0x0F))
@@ -93,7 +93,7 @@ func (this *packet_acks) IBytize() []byte {
 	return buffer.Bytes()
 }
 
-func (this *packet_acks) IParse(buffer []byte) error {
+func (this *packet_ack) IParse(buffer []byte) error {
 	if buffer == nil || len(buffer) != 4 {
 		return fmt.Errorf("Invalid %s Control Packet Size %x\n", PACKET_TYPE_STRINGS[this.packetType], len(buffer))
 	}
@@ -114,16 +114,16 @@ func (this *packet_acks) IParse(buffer []byte) error {
 }
 
 //Variable Header
-func (this *packet_acks) GetPacketId() uint16 {
+func (this *packet_ack) GetPacketId() uint16 {
 	return this.packetId
 }
-func (this *packet_acks) SetPacketId(id uint16) {
+func (this *packet_ack) SetPacketId(id uint16) {
 	this.packetId = id
 }
 
 /////////////////////
 type packet_suback struct {
-	packet_acks
+	packet_ack
 
 	returnCodes []byte
 }
@@ -225,7 +225,7 @@ const (
 )
 
 type packet_connack struct {
-	packet_acks
+	packet_ack
 
 	spFlag     byte
 	returnCode CONNACK_RETURNCODE
