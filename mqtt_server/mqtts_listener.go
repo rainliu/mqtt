@@ -10,7 +10,7 @@ type mqtts_listener struct {
 }
 
 func newListener(provider mqtt.Provider) *mqtts_listener {
-	return &mqtts_listener{provider}
+	return &mqtts_listener{provider: provider}
 }
 func (this *mqtts_listener) ProcessConnect(eventConnect mqtt.EventConnect) {
 	log.Println("Received CONNECT")

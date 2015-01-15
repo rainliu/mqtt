@@ -34,6 +34,7 @@ type provider struct {
 	clientSessions   map[ClientSession]*clientSession
 	serverSessions   map[ServerSession]*serverSession
 
+	ch        chan Message
 	waitGroup *sync.WaitGroup
 }
 
@@ -220,6 +221,7 @@ func (this *provider) ServeConn(conn net.Conn) {
 	}
 }
 
+//Change to FanIn channel
 func (this *provider) Forward(msg Message) {
 	for _, ss := range this.serverSessions {
 		if err := ss.Forward(msg); err != nil {

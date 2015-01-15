@@ -62,7 +62,7 @@ func newServerSession(conn net.Conn) *serverSession {
 }
 
 func (this *serverSession) Forward(msg Message) error {
-	if this.state == SESSION_STATE_CONNECTED {
+	if this.state == SESSION_STATE_CONNECTED && msg.GetClientId() != this.clientId {
 		if _, ok := this.topics[msg.GetTopic()]; ok {
 			if _, err := this.conn.Write(msg.Packetize(this.packetId).Bytes()); err != nil {
 				log.Println(err.Error())
@@ -244,6 +244,7 @@ func (this *serverSession) ProcessConnect(pkgconn PacketConnect) Event {
 }
 
 func (this *serverSession) ProcessPublish(pktpub PacketPublish) Event {
+	pktpub.GetMessage().SetClientId(this.clientId)
 	qos := pktpub.GetMessage().GetQos()
 	if qos == QOS_TWO {
 		clientPacketId := pktpub.GetPacketId()

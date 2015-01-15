@@ -28,17 +28,21 @@ type Message interface {
 	GetContent() string
 	SetContent(content string)
 
+	GetClientId() string
+	SetClientId(clientId string)
+
 	Packetize(packetId uint16) PacketPublish
 }
 
 ////////////////////Implementation////////////////////////
 
 type message struct {
-	dup     bool
-	qos     QOS
-	retain  bool
-	topic   string
-	content string
+	dup      bool
+	qos      QOS
+	retain   bool
+	topic    string
+	content  string
+	clientId string
 }
 
 func NewMessage(dup bool, qos QOS, retain bool, topic string, content string) Message {
@@ -82,6 +86,12 @@ func (this *message) GetContent() string {
 }
 func (this *message) SetContent(content string) {
 	this.content = content
+}
+func (this *message) GetClientId() string {
+	return this.clientId
+}
+func (this *message) SetClientId(clientId string) {
+	this.clientId = clientId
 }
 
 func (this *message) Packetize(packetId uint16) PacketPublish {
