@@ -139,6 +139,9 @@ func (this *packet_publish) IParse(buffer []byte) error {
 	}
 
 	topic = string(buffer[consumedBytes : consumedBytes+topicLength])
+	if this.invalid_topic_wildcard_len_check(topic) {
+		return fmt.Errorf("Invalid %s Control Packet Topic Contains WildCard\n", PACKET_TYPE_STRINGS[this.packetType])
+	}
 	consumedBytes += topicLength
 
 	if qos != QOS_ZERO {
@@ -179,4 +182,24 @@ func (this *packet_publish) GetMessage() Message {
 }
 func (this *packet_publish) SetMessage(m Message) {
 	this.message = m
+}
+
+/* Search for + or # in a topic. Return MOSQ_ERR_INVAL if found.
+ * Also returns MOSQ_ERR_INVAL if the topic string is too long.
+ * Returns MOSQ_ERR_SUCCESS if everything is fine.
+ */
+func (this *packet_publish) invalid_topic_wildcard_len_check(str string) bool {
+	length := len(str)
+
+	if length > 65535 {
+		return true
+	}
+
+	for i := 0; i < length; i++ {
+		if str[i] == '+' || str[i] == '#' {
+			return true
+		}
+	}
+
+	return false
 }

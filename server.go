@@ -64,17 +64,23 @@ func newServerSession(conn net.Conn) *serverSession {
 
 func (this *serverSession) Forward(msg Message) error {
 	if this.state == SESSION_STATE_CONNECTED && msg.GetClientId() != this.clientId {
-		if _, ok := this.topics[msg.GetTopic()]; ok {
-			if _, err := this.conn.Write(msg.Packetize(this.packetId).Bytes()); err != nil {
-				log.Println(err.Error())
-				return err
-			}
-
-			if msg.GetQos() == QOS_TWO || msg.GetQos() == QOS_ONE {
-				this.PacketIds[uint32(this.packetId)] = this.packetId
-				if this.packetId++; this.packetId == 0 {
-					this.packetId++
+		for _, sub := range this.topics {
+			println(sub, "vs ", msg.GetTopic())
+			if this.Match(sub, msg.GetTopic()) {
+				println("Matched")
+				if _, err := this.conn.Write(msg.Packetize(this.packetId).Bytes()); err != nil {
+					log.Println(err.Error())
+					return err
 				}
+
+				if msg.GetQos() == QOS_TWO || msg.GetQos() == QOS_ONE {
+					this.PacketIds[uint32(this.packetId)] = this.packetId
+					if this.packetId++; this.packetId == 0 {
+						this.packetId++
+					}
+				}
+
+				break
 			}
 		}
 	}
@@ -326,4 +332,68 @@ func (this *serverSession) ProcessTerminate(msg string, disconnected bool) Event
 
 func (this *serverSession) Will() Message {
 	return this.will
+}
+
+// Does a topic match a subscription?
+func (this *serverSession) Match(sub, topic string) bool {
+	var slen, tlen int
+	var spos, tpos int
+	multilevel_wildcard := false
+
+	slen = len(sub)
+	tlen = len(topic)
+
+	if slen != 0 && tlen != 0 {
+		if sub[0] == '$' && topic[0] != '$' || (topic[0] == '$' && sub[0] != '$') {
+			return false
+		}
+	}
+
+	spos = 0
+	tpos = 0
+
+	for spos < slen && tpos < tlen {
+		if sub[spos] == topic[tpos] {
+			spos++
+			tpos++
+			if spos == slen && tpos == tlen {
+				return true
+			} else if tpos == tlen && spos == slen-1 && sub[spos] == '+' {
+				spos++
+				return true
+			}
+		} else {
+			if sub[spos] == '+' {
+				spos++
+				for tpos < tlen && topic[tpos] != '/' {
+					tpos++
+				}
+				if tpos == tlen && spos == slen {
+					return true
+				}
+			} else if sub[spos] == '#' {
+				multilevel_wildcard = true
+				if spos+1 != slen {
+					return false
+				} else {
+					return true
+				}
+			} else {
+				return false
+			}
+		}
+		if tpos == tlen-1 {
+			/* Check for e.g. foo matching foo/# */
+			if spos == slen-3 && sub[spos+1] == '/' && sub[spos+2] == '#' {
+				multilevel_wildcard = true
+				return true
+			}
+		}
+	}
+
+	if multilevel_wildcard == false && (tpos < tlen || spos < slen) {
+		return false
+	}
+
+	return true
 }
