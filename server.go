@@ -65,9 +65,7 @@ func newServerSession(conn net.Conn) *serverSession {
 func (this *serverSession) Forward(msg Message) error {
 	if this.state == SESSION_STATE_CONNECTED && msg.GetClientId() != this.clientId {
 		for _, sub := range this.topics {
-			println(sub, "vs ", msg.GetTopic())
 			if this.Match(sub, msg.GetTopic()) {
-				println("Matched")
 				if _, err := this.conn.Write(msg.Packetize(this.packetId).Bytes()); err != nil {
 					log.Println(err.Error())
 					return err
