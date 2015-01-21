@@ -237,6 +237,19 @@ func (this *serverSession) ProcessConnect(pkgconn PacketConnect) Event {
 		this.state = SESSION_STATE_TERMINATED
 		this.err = fmt.Errorf("Invalid %x Control Packet Protocol Level %x\n", pkgconn.GetType(), pkgconn.GetProtocolLevel())
 		return newEventSessionTerminated(this, this.Error(), nil)
+	} else if len(pkgconn.GetClientId()) == 0 && (pkgconn.GetConnectFlags()&CONNECT_FLAG_CLEAN_SESSION) == 0 {
+		pkgconnack := NewPacketConnack()
+		pkgconnack.SetSPFlag(false)
+		pkgconnack.SetReturnCode(CONNACK_RETURNCODE_REFUSED_IDENTIFIER_REJECTED)
+		if _, err := this.conn.Write(pkgconnack.Bytes()); err != nil {
+			log.Println(err.Error())
+		} else {
+			log.Println("SENT CONNACK")
+		}
+
+		this.state = SESSION_STATE_TERMINATED
+		this.err = fmt.Errorf("Invalid %x Control Packet Identifier Rejected\n", pkgconn.GetType())
+		return newEventSessionTerminated(this, this.Error(), nil)
 	} else {
 		this.keepAlive = pkgconn.GetKeepAlive()
 		this.clientId = pkgconn.GetClientId()
