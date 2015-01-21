@@ -53,10 +53,15 @@ func (this *mqtts_listener) ProcessSubscribe(eventSubscribe mqtt.EventSubscribe)
 
 	pktsuback := mqtt.NewPacketSuback()
 	pktsuback.SetPacketId(eventSubscribe.GetPacketId())
+	topics := eventSubscribe.GetSubscribeTopics()
 	qos := eventSubscribe.GetQoSs()
 	retCodes := make([]byte, len(qos))
 	for i := 0; i < len(qos); i++ {
-		retCodes[i] = byte(qos[i])
+		if topics[i] == "nosubscribe" {
+			retCodes[i] = 0x80
+		} else {
+			retCodes[i] = byte(qos[i])
+		}
 	}
 	pktsuback.SetReturnCodes(retCodes)
 
