@@ -28,8 +28,8 @@ type Message interface {
 	GetContent() string
 	SetContent(content string)
 
-	GetClientId() string
-	SetClientId(clientId string)
+	//GetClientId() string
+	//SetClientId(clientId string)
 
 	Packetize(packetId uint16) PacketPublish
 }
