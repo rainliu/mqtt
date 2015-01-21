@@ -7,10 +7,13 @@ import (
 
 type mqtts_listener struct {
 	provider mqtt.Provider
+
+	retainedMessages map[string]mqtt.Message
 }
 
 func newListener(provider mqtt.Provider) *mqtts_listener {
-	return &mqtts_listener{provider: provider}
+	return &mqtts_listener{provider: provider,
+		retainedMessages: make(map[string]mqtt.Message)}
 }
 func (this *mqtts_listener) ProcessConnect(eventConnect mqtt.EventConnect) {
 	log.Println("Received CONNECT")
@@ -30,7 +33,19 @@ func (this *mqtts_listener) ProcessPublish(eventPublish mqtt.EventPublish) {
 		eventPublish.GetMessage().GetTopic(),
 		eventPublish.GetMessage().GetContent())
 
-	this.provider.Forward(eventPublish.GetMessage())
+	this.provider.Forward(mqtt.NewMessage(eventPublish.GetMessage().GetDup(),
+		eventPublish.GetMessage().GetQos(),
+		false,
+		eventPublish.GetMessage().GetTopic(),
+		eventPublish.GetMessage().GetContent()))
+
+	if eventPublish.GetMessage().GetRetain() {
+		if eventPublish.GetMessage().GetContent() == "" {
+			delete(this.retainedMessages, eventPublish.GetMessage().GetTopic())
+		} else {
+			this.retainedMessages[eventPublish.GetMessage().GetTopic()] = eventPublish.GetMessage()
+		}
+	}
 }
 func (this *mqtts_listener) ProcessSubscribe(eventSubscribe mqtt.EventSubscribe) {
 	log.Printf("Received SUBSCRIBE with %v", eventSubscribe.GetSubscribeTopics())
@@ -46,6 +61,10 @@ func (this *mqtts_listener) ProcessSubscribe(eventSubscribe mqtt.EventSubscribe)
 	pktsuback.SetReturnCodes(retCodes)
 
 	serverSession.AcknowledgeSubscribe(pktsuback)
+
+	for _, msg := range this.retainedMessages {
+		serverSession.Forward(msg)
+	}
 }
 func (this *mqtts_listener) ProcessUnsubscribe(eventUnsubscribe mqtt.EventUnsubscribe) {
 	log.Printf("Received UNSUBSCRIBE with %v", eventUnsubscribe.GetUnsubscribeTopics())
