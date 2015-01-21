@@ -12,7 +12,6 @@ import (
 type ServerSession interface {
 	Session
 
-	Match(sub, topic string) bool
 	Will() Message
 	Forward(msg Message) error
 	AcknowledgeConnect(pktconnack PacketConnack) error
