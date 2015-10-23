@@ -25,10 +25,9 @@ var stackSingleton Stack
 
 func GetStack() Stack {
 	if stackSingleton == nil {
-		return newStack()
-	} else {
-		return stackSingleton
-	}
+		stackSingleton = newStack()
+	} 
+	return stackSingleton
 }
 
 type stack struct {

@@ -137,6 +137,7 @@ func (this *provider) ServeAccept(st *transport) {
 			log.Printf("Listening %s://%s:%d Stoped!!!\n", st.GetNetwork(), st.GetAddress(), st.GetPort())
 			return
 		default:
+			//can't delete default, otherwise blocking call
 		}
 		st.SetDeadline(time.Now().Add(1e9))
 		conn, err := st.Accept()
@@ -156,7 +157,7 @@ func (this *provider) ServeConn(conn net.Conn) {
 	defer conn.Close()
 
 	ss := newServerSession(conn)
-	this.serverSessions[ss] = ss
+	this.serverSessions[ss] = ss //potential bug in multi-threading
 
 	var buf []byte
 	var err error
@@ -167,7 +168,7 @@ func (this *provider) ServeConn(conn net.Conn) {
 			for _, ln := range this.listeners {
 				ln.ProcessSessionTerminated(newEventSessionTerminated(ss, ss.Error(), ss.Will()))
 			}
-			delete(this.serverSessions, ss)
+			delete(this.serverSessions, ss) //potential bug in multi-threading
 			return
 		default:
 			//can't delete default, otherwise blocking call
