@@ -34,7 +34,7 @@ func main() {
 	provider := stack.CreateProvider()
 
 	transport := stack.CreateTransport(network, address, port, tlsc)
-	provider.AddServerTransport(transport.(mqtt.ServerTransport))
+	provider.AddTransport(transport)
 
 	listener := newListener(provider)
 	provider.AddListener(listener)

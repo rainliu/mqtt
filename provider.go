@@ -12,26 +12,26 @@ import (
 ////////////////////Interface//////////////////////////////
 
 type Provider interface {
-	AddServerTransport(st ServerTransport)
-	GetServerTransports() []ServerTransport
-	RemoveServerTransport(st ServerTransport)
+	AddTransport(t Transport)
+	GetTransports() []Transport
+	RemoveTransport(t Transport)
 
-	AddListener(listener Listener)
-	RemoveListener(listener Listener)
+	AddListener(l Listener)
+	RemoveListener(l Listener)
 
-	Forward(msg Message)
+	Forward(m Message)
 }
 
 ////////////////////Implementation////////////////////////
 
 type provider struct {
 	listeners       map[Listener]Listener
-	transports 		map[ServerTransport]ServerTransport
-	clients   		map[ServerSession]*serverSession
+	transports 		map[Transport]Transport
+	sessions   		map[Session]*session
 
 	forward   chan Message
-	join      chan *serverSession
-	leave	  chan *serverSession
+	join      chan *session
+	leave	  chan *session
 	
 	quit      chan bool
 	waitGroup *sync.WaitGroup
@@ -41,12 +41,12 @@ func newProvider() *provider {
 	this := &provider{}
 
 	this.listeners = make(map[Listener]Listener)
-	this.transports = make(map[ServerTransport]ServerTransport)
-	this.clients = make(map[ServerSession]*serverSession)
+	this.transports = make(map[Transport]Transport)
+	this.sessions = make(map[Session]*session)
 
 	this.forward = make(chan Message)
-	this.join = make(chan *serverSession)
-	this.leave = make(chan *serverSession)
+	this.join = make(chan *session)
+	this.leave = make(chan *session)
 	
 	this.quit = make(chan bool)
 	this.waitGroup = &sync.WaitGroup{}
@@ -54,24 +54,24 @@ func newProvider() *provider {
 	return this
 }
 
-func (this *provider) AddServerTransport(st ServerTransport) {
-	this.transports[st] = st
+func (this *provider) AddTransport(t Transport) {
+	this.transports[t] = t
 }
 
-func (this *provider) GetServerTransports() []ServerTransport {
-	serverTransports := make([]ServerTransport, len(this.transports))
+func (this *provider) GetTransports() []Transport {
+	ts := make([]Transport, len(this.transports))
 
 	l := 0
-	for _, value := range this.transports {
-		serverTransports[l] = value
+	for _, t := range this.transports {
+		ts[l] = t
 		l++
 	}
 
-	return serverTransports
+	return ts
 }
 
-func (this *provider) RemoveServerTransport(st ServerTransport) {
-	delete(this.transports, st)
+func (this *provider) RemoveTransport(t Transport) {
+	delete(this.transports, t)
 }
 
 func (this *provider) AddListener(l Listener) {
@@ -83,29 +83,29 @@ func (this *provider) RemoveListener(l Listener) {
 }
 
 func (this *provider) Run() {
-	for _, st := range this.transports {
-		if err := st.Listen(); err != nil {
-			log.Printf("Listening %s://%s:%d Failed!!!\n", st.GetNetwork(), st.GetAddress(), st.GetPort())
+	for _, t := range this.transports {
+		if err := t.Listen(); err != nil {
+			log.Printf("Listening %s://%s:%d Failed!!!\n", t.GetNetwork(), t.GetAddress(), t.GetPort())
 		} else {
-			log.Printf("Listening %s://%s:%d Runing...\n", st.GetNetwork(), st.GetAddress(), st.GetPort())
+			log.Printf("Listening %s://%s:%d Runing...\n", t.GetNetwork(), t.GetAddress(), t.GetPort())
 			this.waitGroup.Add(1)
-			go this.ServeAccept(st.(*transport))
+			go this.ServeAccept(t.(*transport))
 		}
 	}
 	
 	//infinite loop run until ctrl+c
 	for {
 		select {
-		case client := <-this.join:
-			this.clients[client] = client
-		case client := <-this.leave:
-			delete(this.clients, client)
+		case s := <-this.join:
+			this.sessions[s] = s
+		case s := <-this.leave:
+			delete(this.sessions, s)
 		case msg := <-this.forward:
-			for _, client := range this.clients {
-				if err := client.Forward(msg); err != nil {
+			for _, s := range this.sessions {
+				if err := s.Forward(msg); err != nil {
 					log.Println(err)
-					for _, ln := range this.listeners {
-						ln.ProcessIOException(newEventIOException(client, client.conn.RemoteAddr()))
+					for _, l := range this.listeners {
+						l.ProcessIOException(newEventIOException(s, s.conn.RemoteAddr()))
 					}
 				}
 			}
@@ -118,29 +118,29 @@ func (this *provider) Run() {
 
 func (this *provider) Stop() {
 	this.quit <- true
-	for _, ss := range this.clients {
-		ss.Terminate(errors.New("Provider Stopped\n"))
+	for _, s := range this.sessions {
+		s.Terminate(errors.New("Provider Stopped\n"))
 	}
-	for _, st := range this.transports {
-		st.Close()
+	for _, t := range this.transports {
+		t.Close()
 	}
 	this.waitGroup.Wait()
 }
 
-func (this *provider) ServeAccept(st *transport) {
+func (this *provider) ServeAccept(t *transport) {
 	defer this.waitGroup.Done()
-	defer st.lner.Close()
+	defer t.lner.Close()
 
 	for {
 		select {
-		case <-st.quit:
-			log.Printf("Listening %s://%s:%d Stoped!!!\n", st.GetNetwork(), st.GetAddress(), st.GetPort())
+		case <-t.quit:
+			log.Printf("Listening %s://%s:%d Stoped!!!\n", t.GetNetwork(), t.GetAddress(), t.GetPort())
 			return
 		default:
 			//can't delete default, otherwise blocking call
 		}
-		st.SetDeadline(time.Now().Add(1e9))
-		conn, err := st.Accept()
+		t.SetDeadline(time.Now().Add(1e9))
+		conn, err := t.Accept()
 		if err != nil {
 			if opErr, ok := err.(*net.OpError); !(ok && opErr.Timeout()) {
 				log.Println(err)
@@ -156,19 +156,19 @@ func (this *provider) ServeConn(conn net.Conn) {
 	defer this.waitGroup.Done()
 	defer conn.Close()
 
-	ss := newServerSession(conn)
-	this.join <- ss
+	s := newSession(conn)
+	this.join <- s
 
 	var buf []byte
 	var err error
 	for {
 		select {
-		case <-ss.quit:
+		case <-s.quit:
 			log.Println("Disconnecting", conn.RemoteAddr())
-			for _, ln := range this.listeners {
-				ln.ProcessSessionTerminated(newEventSessionTerminated(ss, ss.Error(), ss.Will()))
+			for _, l := range this.listeners {
+				l.ProcessSessionTerminated(newEventSessionTerminated(s, s.Error(), s.Will()))
 			}
-			this.leave <- ss
+			this.leave <- s
 			return
 		default:
 			//can't delete default, otherwise blocking call
@@ -176,50 +176,50 @@ func (this *provider) ServeConn(conn net.Conn) {
 
 		if buf, err = this.ReadPacket(conn); err != nil {
 			if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
-				ss.keepAliveAccumulated += 1 //add 1 second
-				if ss.keepAlive != 0 && ss.keepAliveAccumulated >= (ss.keepAlive*3)/2 {
+				s.keepAliveAccumulated += 1 //add 1 second
+				if s.keepAlive != 0 && s.keepAliveAccumulated >= (s.keepAlive*3)/2 {
 					log.Println("Timeout", conn.RemoteAddr())
-					for _, ln := range this.listeners {
-						ln.ProcessTimeout(newEventTimeout(ss, TIMEOUT_SESSION))
+					for _, l := range this.listeners {
+						l.ProcessTimeout(newEventTimeout(s, TIMEOUT_SESSION))
 					}
-					ss.Terminate(errors.New("Timeout"))
+					s.Terminate(errors.New("Timeout"))
 				} else {
 					continue
 				}
 			} else {
 				log.Println(err)
-				for _, ln := range this.listeners {
-					ln.ProcessIOException(newEventIOException(ss, conn.RemoteAddr()))
+				for _, l := range this.listeners {
+					l.ProcessIOException(newEventIOException(s, conn.RemoteAddr()))
 				}
-				ss.Terminate(err)
+				s.Terminate(err)
 			}
 		} else {
-			ss.keepAliveAccumulated = 0
-			if evt := ss.Process(buf); evt != nil {
+			s.keepAliveAccumulated = 0
+			if evt := s.Process(buf); evt != nil {
 				switch evt.GetEventType() {
 				case EVENT_CONNECT:
-					for _, ln := range this.listeners {
-						ln.ProcessConnect(evt.(EventConnect))
+					for _, l := range this.listeners {
+						l.ProcessConnect(evt.(EventConnect))
 					}
 				case EVENT_PUBLISH:
-					for _, ln := range this.listeners {
-						ln.ProcessPublish(evt.(EventPublish))
+					for _, l := range this.listeners {
+						l.ProcessPublish(evt.(EventPublish))
 					}
 				case EVENT_SUBSCRIBE:
-					for _, ln := range this.listeners {
-						ln.ProcessSubscribe(evt.(EventSubscribe))
+					for _, l := range this.listeners {
+						l.ProcessSubscribe(evt.(EventSubscribe))
 					}
 				case EVENT_UNSUBSCRIBE:
-					for _, ln := range this.listeners {
-						ln.ProcessUnsubscribe(evt.(EventUnsubscribe))
+					for _, l := range this.listeners {
+						l.ProcessUnsubscribe(evt.(EventUnsubscribe))
 					}
 				case EVENT_IOEXCEPTION:
-					for _, ln := range this.listeners {
-						ln.ProcessIOException(evt.(EventIOException))
+					for _, l := range this.listeners {
+						l.ProcessIOException(evt.(EventIOException))
 					}
-					ss.Terminate(errors.New(ss.Error()))
+					s.Terminate(errors.New(s.Error()))
 				default:
-					ss.Terminate(errors.New(ss.Error()))
+					s.Terminate(errors.New(s.Error()))
 				}
 			}
 		}

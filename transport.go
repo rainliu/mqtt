@@ -26,17 +26,9 @@ type Transport interface {
 	GetAddress() string
 	GetPort() int
 	GetTLSConfig() *tls.Config
-}
-
-type ClientTransport interface {
-	Transport
-
+	
 	Dial() (net.Conn, error)
-}
-
-type ServerTransport interface {
-	Transport
-
+	
 	Listen() error
 	Accept() (net.Conn, error)
 	Close()

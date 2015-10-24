@@ -17,13 +17,13 @@ func newListener(provider mqtt.Provider) *mqtts_listener {
 }
 func (this *mqtts_listener) ProcessConnect(eventConnect mqtt.EventConnect) {
 	log.Println("Received CONNECT")
-	serverSession := eventConnect.GetSession().(mqtt.ServerSession)
+	s := eventConnect.GetSession()
 
 	pktconnack := mqtt.NewPacketConnack()
 	pktconnack.SetSPFlag(false)
 	pktconnack.SetReturnCode(mqtt.CONNACK_RETURNCODE_ACCEPTED)
 
-	serverSession.AcknowledgeConnect(pktconnack)
+	s.AcknowledgeConnect(pktconnack)
 }
 func (this *mqtts_listener) ProcessPublish(eventPublish mqtt.EventPublish) {
 	log.Printf("Received Publish with DUP %v QoS %v RETAIN %v Topic: %v Content: %v\n",
@@ -49,7 +49,7 @@ func (this *mqtts_listener) ProcessPublish(eventPublish mqtt.EventPublish) {
 }
 func (this *mqtts_listener) ProcessSubscribe(eventSubscribe mqtt.EventSubscribe) {
 	log.Printf("Received SUBSCRIBE with %v", eventSubscribe.GetSubscribeTopics())
-	serverSession := eventSubscribe.GetSession().(mqtt.ServerSession)
+	s := eventSubscribe.GetSession()
 
 	pktsuback := mqtt.NewPacketSuback()
 	pktsuback.SetPacketId(eventSubscribe.GetPacketId())
@@ -65,10 +65,10 @@ func (this *mqtts_listener) ProcessSubscribe(eventSubscribe mqtt.EventSubscribe)
 	}
 	pktsuback.SetReturnCodes(retCodes)
 
-	serverSession.AcknowledgeSubscribe(pktsuback)
+	s.AcknowledgeSubscribe(pktsuback)
 
 	for _, msg := range this.retainedMessages {
-		serverSession.Forward(msg)
+		s.Forward(msg)
 	}
 }
 func (this *mqtts_listener) ProcessUnsubscribe(eventUnsubscribe mqtt.EventUnsubscribe) {
