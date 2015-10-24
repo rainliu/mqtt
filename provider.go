@@ -19,22 +19,20 @@ type Provider interface {
 	AddListener(listener Listener)
 	RemoveListener(listener Listener)
 
-	CreateClientSession(ct ClientTransport) ClientSession
-	GetClientSessions() []ClientSession
-	DeleteClientSession(cs ClientSession)
-
 	Forward(msg Message)
 }
 
 ////////////////////Implementation////////////////////////
 
 type provider struct {
-	listeners        map[Listener]Listener
-	serverTransports map[ServerTransport]ServerTransport
-	clientSessions   map[ClientSession]*clientSession
-	serverSessions   map[ServerSession]*serverSession
+	listeners       map[Listener]Listener
+	transports 		map[ServerTransport]ServerTransport
+	clients   		map[ServerSession]*serverSession
 
-	ch        chan Message
+	forward   chan Message
+	join      chan *serverSession
+	leave	  chan *serverSession
+	
 	quit      chan bool
 	waitGroup *sync.WaitGroup
 }
@@ -43,11 +41,13 @@ func newProvider() *provider {
 	this := &provider{}
 
 	this.listeners = make(map[Listener]Listener)
-	this.serverTransports = make(map[ServerTransport]ServerTransport)
-	this.clientSessions = make(map[ClientSession]*clientSession)
-	this.serverSessions = make(map[ServerSession]*serverSession)
+	this.transports = make(map[ServerTransport]ServerTransport)
+	this.clients = make(map[ServerSession]*serverSession)
 
-	this.ch = make(chan Message)
+	this.forward = make(chan Message)
+	this.join = make(chan *serverSession)
+	this.leave = make(chan *serverSession)
+	
 	this.quit = make(chan bool)
 	this.waitGroup = &sync.WaitGroup{}
 
@@ -55,14 +55,14 @@ func newProvider() *provider {
 }
 
 func (this *provider) AddServerTransport(st ServerTransport) {
-	this.serverTransports[st] = st
+	this.transports[st] = st
 }
 
 func (this *provider) GetServerTransports() []ServerTransport {
-	serverTransports := make([]ServerTransport, len(this.serverTransports))
+	serverTransports := make([]ServerTransport, len(this.transports))
 
 	l := 0
-	for _, value := range this.serverTransports {
+	for _, value := range this.transports {
 		serverTransports[l] = value
 		l++
 	}
@@ -71,7 +71,7 @@ func (this *provider) GetServerTransports() []ServerTransport {
 }
 
 func (this *provider) RemoveServerTransport(st ServerTransport) {
-	delete(this.serverTransports, st)
+	delete(this.transports, st)
 }
 
 func (this *provider) AddListener(l Listener) {
@@ -82,30 +82,8 @@ func (this *provider) RemoveListener(l Listener) {
 	delete(this.listeners, l)
 }
 
-func (this *provider) CreateClientSession(ct ClientTransport) ClientSession {
-	return nil
-}
-
-func (this *provider) GetClientSessions() []ClientSession {
-	clientSessions := make([]ClientSession, len(this.clientSessions))
-
-	l := 0
-	for _, value := range this.clientSessions {
-		clientSessions[l] = value
-		l++
-	}
-
-	return clientSessions
-}
-
-func (this *provider) DeleteClientSession(cs ClientSession) {
-	delete(this.clientSessions, cs)
-}
-
 func (this *provider) Run() {
-	this.waitGroup.Add(1)
-	go this.ServeForward()
-	for _, st := range this.serverTransports {
+	for _, st := range this.transports {
 		if err := st.Listen(); err != nil {
 			log.Printf("Listening %s://%s:%d Failed!!!\n", st.GetNetwork(), st.GetAddress(), st.GetPort())
 		} else {
@@ -114,14 +92,36 @@ func (this *provider) Run() {
 			go this.ServeAccept(st.(*transport))
 		}
 	}
+	
+	//infinite loop run until ctrl+c
+	for {
+		select {
+		case client := <-this.join:
+			this.clients[client] = client
+		case client := <-this.leave:
+			delete(this.clients, client)
+		case msg := <-this.forward:
+			for _, client := range this.clients {
+				if err := client.Forward(msg); err != nil {
+					log.Println(err)
+					for _, ln := range this.listeners {
+						ln.ProcessIOException(newEventIOException(client, client.conn.RemoteAddr()))
+					}
+				}
+			}
+		case <-this.quit:
+			log.Println("ServeForward Quit")
+			return
+		}
+	}
 }
 
 func (this *provider) Stop() {
 	this.quit <- true
-	for _, ss := range this.serverSessions {
+	for _, ss := range this.clients {
 		ss.Terminate(errors.New("Provider Stopped\n"))
 	}
-	for _, st := range this.serverTransports {
+	for _, st := range this.transports {
 		st.Close()
 	}
 	this.waitGroup.Wait()
@@ -157,7 +157,7 @@ func (this *provider) ServeConn(conn net.Conn) {
 	defer conn.Close()
 
 	ss := newServerSession(conn)
-	this.serverSessions[ss] = ss //potential bug in multi-threading
+	this.join <- ss
 
 	var buf []byte
 	var err error
@@ -168,7 +168,7 @@ func (this *provider) ServeConn(conn net.Conn) {
 			for _, ln := range this.listeners {
 				ln.ProcessSessionTerminated(newEventSessionTerminated(ss, ss.Error(), ss.Will()))
 			}
-			delete(this.serverSessions, ss) //potential bug in multi-threading
+			this.leave <- ss
 			return
 		default:
 			//can't delete default, otherwise blocking call
@@ -226,29 +226,8 @@ func (this *provider) ServeConn(conn net.Conn) {
 	}
 }
 
-func (this *provider) ServeForward() {
-	defer this.waitGroup.Done()
-
-	for {
-		select {
-		case msg := <-this.ch:
-			for _, ss := range this.serverSessions {
-				if err := ss.Forward(msg); err != nil {
-					log.Println(err)
-					for _, ln := range this.listeners {
-						ln.ProcessIOException(newEventIOException(ss, ss.conn.RemoteAddr()))
-					}
-				}
-			}
-		case <-this.quit:
-			log.Println("ServeForward Quit")
-			return
-		}
-	}
-}
-
 func (this *provider) Forward(msg Message) {
-	this.ch <- msg
+	this.forward <- msg
 }
 
 func (this *provider) ReadPacket(conn net.Conn) ([]byte, error) {
