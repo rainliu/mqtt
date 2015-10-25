@@ -94,7 +94,7 @@ func (this *stack) DeleteProvider(p Provider) {
 
 func (this *stack) Run() {
 	for _, p := range this.providers {
-		p.Run()
+		go p.Run()
 	}
 }
 
