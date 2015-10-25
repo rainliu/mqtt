@@ -25,10 +25,9 @@ var stackSingleton Stack
 
 func GetStack() Stack {
 	if stackSingleton == nil {
-		return newStack()
-	} else {
-		return stackSingleton
-	}
+		stackSingleton = newStack()
+	} 
+	return stackSingleton
 }
 
 type stack struct {
@@ -95,7 +94,7 @@ func (this *stack) DeleteProvider(p Provider) {
 
 func (this *stack) Run() {
 	for _, p := range this.providers {
-		p.Run()
+		go p.Run()
 	}
 }
 

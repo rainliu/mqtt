@@ -12,7 +12,7 @@ import (
 
 func main() {
 	if len(os.Args) < 4 {
-		print("Usage: mqtt_server tcp 192.0.0.1 1883")
+		print("Usage: mqtt_server tcp localhost 1883")
 		return
 	}
 
@@ -34,7 +34,7 @@ func main() {
 	provider := stack.CreateProvider()
 
 	transport := stack.CreateTransport(network, address, port, tlsc)
-	provider.AddServerTransport(transport.(mqtt.ServerTransport))
+	provider.AddTransport(transport)
 
 	listener := newListener(provider)
 	provider.AddListener(listener)
