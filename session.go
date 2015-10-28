@@ -4,7 +4,6 @@ package mqtt
 import(
 	"errors" 
  	"fmt" 
- 	"log" 
 	"net" 
 )
 ////////////////////Interface//////////////////////////////
@@ -45,6 +44,7 @@ type session struct {
 	retransmitTimer int
 	
 	conn net.Conn
+	tracer Tracer
 
 	//Connect
 	keepAlive uint16
@@ -65,10 +65,11 @@ type session struct {
 	qosToBeAdded         []QOS
 }
 
-func newSession(conn net.Conn) *session {
+func newSession(conn net.Conn, tracer Tracer) *session {
 	this := &session{}
 
 	this.conn = conn
+	this.tracer = tracer
 	this.err = nil
 	this.state = SESSION_STATE_CREATED
 	this.quit = make(chan bool)
@@ -118,7 +119,7 @@ func (this *session) Forward(msg Message) error {
 		for _, sub := range this.topics {
 			if this.Match(sub, msg.GetTopic()) {
 				if _, err := this.conn.Write(msg.Packetize(this.packetId).Bytes()); err != nil {
-					log.Println(err.Error())
+					this.tracer.Println(err.Error())
 					return err
 				}
 
@@ -141,10 +142,10 @@ func (this *session) AcknowledgeConnect(pktconnack PacketConnack) error {
 	switch this.state {
 	case SESSION_STATE_CREATED:
 		if _, err := this.conn.Write(pktconnack.Bytes()); err != nil {
-			log.Println(err.Error())
+			this.tracer.Println(err.Error())
 			return err
 		} else {
-			log.Println("SENT CONNACK")
+			this.tracer.Println("SENT CONNACK")
 		}
 		if pktconnack.GetReturnCode() == CONNACK_RETURNCODE_ACCEPTED {
 			this.state = SESSION_STATE_CONNECTED
@@ -166,10 +167,10 @@ func (this *session) AcknowledgeSubscribe(pktsuback PacketSuback) error {
 			return errors.New("Invalid Return Codes Length in PacketSuback\n")
 		}
 		if _, err := this.conn.Write(pktsuback.Bytes()); err != nil {
-			log.Println(err.Error())
+			this.tracer.Println(err.Error())
 			return err
 		} else {
-			log.Println("SENT SUBACK")
+			this.tracer.Println("SENT SUBACK")
 		}
 		for i := 0; i < len(retCodes); i++ {
 			if retCodes[i] <= 0x02 {
@@ -214,12 +215,12 @@ func (this *session) Process(buf []byte) Event {
 		case PACKET_UNSUBSCRIBE:
 			return this.ProcessUnsubscribe(pkt.(PacketUnsubscribe))
 		case PACKET_PINGREQ:
-			log.Println("PINGREQ Packet Received")
+			this.tracer.Println("PINGREQ Packet Received")
 			pkgpingresp := NewPacket(PACKET_PINGRESP)
 			if _, err := this.conn.Write(pkgpingresp.Bytes()); err != nil {
-				log.Println(err.Error())
+				this.tracer.Println(err.Error())
 			} else {
-				log.Println("SENT PINGRESP")
+				this.tracer.Println("SENT PINGRESP")
 			}
 		case PACKET_PUBREL:
 			clientPacketId := uint32(pkt.(PacketPubrel).GetPacketId()) << 16
@@ -230,9 +231,9 @@ func (this *session) Process(buf []byte) Event {
 				pkgpubcomp := NewPacketAcks(PACKET_PUBCOMP)
 				pkgpubcomp.SetPacketId(uint16(clientPacketId >> 16))
 				if _, err := this.conn.Write(pkgpubcomp.Bytes()); err != nil {
-					log.Println(err.Error())
+					this.tracer.Println(err.Error())
 				} else {
-					log.Println("SENT PUBCOMP")
+					this.tracer.Println("SENT PUBCOMP")
 				}
 			}
 		case PACKET_PUBACK:
@@ -250,9 +251,9 @@ func (this *session) Process(buf []byte) Event {
 				pkgpubrel := NewPacketAcks(PACKET_PUBREL)
 				pkgpubrel.SetPacketId(uint16(serverPacketId))
 				if _, err := this.conn.Write(pkgpubrel.Bytes()); err != nil {
-					log.Println(err.Error())
+					this.tracer.Println(err.Error())
 				} else {
-					log.Println("SENT PUBREL")
+					this.tracer.Println("SENT PUBREL")
 				}
 			}
 		case PACKET_PUBCOMP:
@@ -280,9 +281,9 @@ func (this *session) ProcessConnect(pkgconn PacketConnect) Event {
 		pkgconnack.SetSPFlag(false)
 		pkgconnack.SetReturnCode(CONNACK_RETURNCODE_REFUSED_UNACCEPTABLE_PROTOCOL_VERSION)
 		if _, err := this.conn.Write(pkgconnack.Bytes()); err != nil {
-			log.Println(err.Error())
+			this.tracer.Println(err.Error())
 		} else {
-			log.Println("SENT CONNACK")
+			this.tracer.Println("SENT CONNACK")
 		}
 
 		this.state = SESSION_STATE_TERMINATED
@@ -293,9 +294,9 @@ func (this *session) ProcessConnect(pkgconn PacketConnect) Event {
 		pkgconnack.SetSPFlag(false)
 		pkgconnack.SetReturnCode(CONNACK_RETURNCODE_REFUSED_IDENTIFIER_REJECTED)
 		if _, err := this.conn.Write(pkgconnack.Bytes()); err != nil {
-			log.Println(err.Error())
+			this.tracer.Println(err.Error())
 		} else {
-			log.Println("SENT CONNACK")
+			this.tracer.Println("SENT CONNACK")
 		}
 
 		this.state = SESSION_STATE_TERMINATED
@@ -339,17 +340,17 @@ func (this *session) ProcessPublish(pktpub PacketPublish) Event {
 		pkgpubrec := NewPacketAcks(PACKET_PUBREC)
 		pkgpubrec.SetPacketId(clientPacketId)
 		if _, err := this.conn.Write(pkgpubrec.Bytes()); err != nil {
-			log.Println(err.Error())
+			this.tracer.Println(err.Error())
 		} else {
-			log.Println("SENT PUBREC")
+			this.tracer.Println("SENT PUBREC")
 		}
 	} else if qos == QOS_ONE {
 		pkgpuback := NewPacketAcks(PACKET_PUBACK)
 		pkgpuback.SetPacketId(pktpub.GetPacketId())
 		if _, err := this.conn.Write(pkgpuback.Bytes()); err != nil {
-			log.Println(err.Error())
+			this.tracer.Println(err.Error())
 		} else {
-			log.Println("SENT PUBACK")
+			this.tracer.Println("SENT PUBACK")
 		}
 	}
 	return newEventPublish(this, pktpub.GetMessage())
@@ -375,9 +376,9 @@ func (this *session) ProcessUnsubscribe(pktunsub PacketUnsubscribe) Event {
 	pkgsuback := NewPacketAcks(PACKET_UNSUBACK)
 	pkgsuback.SetPacketId(pktunsub.GetPacketId())
 	if _, err := this.conn.Write(pkgsuback.Bytes()); err != nil {
-		log.Println(err.Error())
+		this.tracer.Println(err.Error())
 	} else {
-		log.Println("SENT UNSUBACK")
+		this.tracer.Println("SENT UNSUBACK")
 	}
 
 	return newEventUnsubscribe(this, topics)

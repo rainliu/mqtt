@@ -3,7 +3,6 @@ package mqtt
 import (
 	"errors"
 	"io"
-	"log"
 	"net"
 	"sync"
 	"time"
@@ -35,9 +34,11 @@ type provider struct {
 	
 	quit      chan bool
 	waitGroup *sync.WaitGroup
+	
+	tracer    Tracer
 }
 
-func newProvider() *provider {
+func newProvider(tracer Tracer) *provider {
 	this := &provider{}
 
 	this.listeners = make(map[Listener]Listener)
@@ -50,6 +51,8 @@ func newProvider() *provider {
 	
 	this.quit = make(chan bool)
 	this.waitGroup = &sync.WaitGroup{}
+	
+	this.tracer = tracer
 
 	return this
 }
@@ -85,9 +88,9 @@ func (this *provider) RemoveListener(l Listener) {
 func (this *provider) Run() {
 	for _, t := range this.transports {
 		if err := t.Listen(); err != nil {
-			log.Printf("Listening %s://%s:%d Failed!!!\n", t.GetNetwork(), t.GetAddress(), t.GetPort())
+			this.tracer.Printf("Listening %s://%s:%d Failed!!!\n", t.GetNetwork(), t.GetAddress(), t.GetPort())
 		} else {
-			log.Printf("Listening %s://%s:%d Runing...\n", t.GetNetwork(), t.GetAddress(), t.GetPort())
+			this.tracer.Printf("Listening %s://%s:%d Runing...\n", t.GetNetwork(), t.GetAddress(), t.GetPort())
 			this.waitGroup.Add(1)
 			go this.ServeAccept(t.(*transport))
 		}
@@ -103,14 +106,14 @@ func (this *provider) Run() {
 		case msg := <-this.forward:
 			for _, s := range this.sessions {
 				if err := s.Forward(msg); err != nil {
-					log.Println(err)
+					this.tracer.Println(err)
 					for _, l := range this.listeners {
 						l.ProcessIOException(newEventIOException(s, s.conn.RemoteAddr()))
 					}
 				}
 			}
 		case <-this.quit:
-			log.Println("ServeForward Quit")
+			this.tracer.Println("ServeForward Quit")
 			return
 		}
 	}
@@ -134,7 +137,7 @@ func (this *provider) ServeAccept(t *transport) {
 	for {
 		select {
 		case <-t.quit:
-			log.Printf("Listening %s://%s:%d Stoped!!!\n", t.GetNetwork(), t.GetAddress(), t.GetPort())
+			this.tracer.Printf("Listening %s://%s:%d Stoped!!!\n", t.GetNetwork(), t.GetAddress(), t.GetPort())
 			return
 		default:
 			//can't delete default, otherwise blocking call
@@ -143,7 +146,7 @@ func (this *provider) ServeAccept(t *transport) {
 		conn, err := t.Accept()
 		if err != nil {
 			if opErr, ok := err.(*net.OpError); !(ok && opErr.Timeout()) {
-				log.Println(err)
+				this.tracer.Println(err)
 			}
 			continue
 		}
@@ -156,7 +159,7 @@ func (this *provider) ServeConn(conn net.Conn) {
 	defer this.waitGroup.Done()
 	defer conn.Close()
 
-	s := newSession(conn)
+	s := newSession(conn, this.tracer)
 	this.join <- s
 
 	var buf []byte
@@ -164,7 +167,7 @@ func (this *provider) ServeConn(conn net.Conn) {
 	for {
 		select {
 		case <-s.quit:
-			log.Println("Disconnecting", conn.RemoteAddr())
+			this.tracer.Println("Disconnecting", conn.RemoteAddr())
 			for _, l := range this.listeners {
 				l.ProcessSessionTerminated(newEventSessionTerminated(s, s.Error(), s.Will()))
 			}
@@ -178,7 +181,7 @@ func (this *provider) ServeConn(conn net.Conn) {
 			if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
 				s.keepAliveAccumulated += 1 //add 1 second
 				if s.keepAlive != 0 && s.keepAliveAccumulated >= (s.keepAlive*3)/2 {
-					log.Println("Timeout", conn.RemoteAddr())
+					this.tracer.Println("Timeout", conn.RemoteAddr())
 					for _, l := range this.listeners {
 						l.ProcessTimeout(newEventTimeout(s, TIMEOUT_SESSION))
 					}
@@ -187,7 +190,7 @@ func (this *provider) ServeConn(conn net.Conn) {
 					continue
 				}
 			} else {
-				log.Println(err)
+				this.tracer.Println(err)
 				for _, l := range this.listeners {
 					l.ProcessIOException(newEventIOException(s, conn.RemoteAddr()))
 				}

@@ -45,3 +45,24 @@ Subscribe failure test succeeded<br>
 $ topics test starting<br>
 $ topics test succeeded<br>
 test suite succeeded<br>
+
+<br>
+$ sdkperf_mqtt.sh -cip=localhost -ptl=T/demo -stl=T/demo -mpq=1 -msq=1 -msa=100
+ -mn=10000 -mr=10000000
+<br>
+TraceOn():<br>
+Total Messages transmitted = 10000<br>
+Computed publish rate (msg/sec) = 1122.0<br>
+-------------------------------------------------
+Total Messages received across all subscribers = 10000<br>
+Messages received with discard indication = 0<br>
+Computed subscriber rate (msg/sec across all subscribers) = 1123<br>
+
+TraceOff():<br>
+-------------------------------------------------
+Total Messages transmitted = 10000<br>
+Computed publish rate (msg/sec) = 7694.0<br>
+-------------------------------------------------
+Total Messages received across all subscribers = 10000<br>
+Messages received with discard indication = 0<br>
+Computed subscriber rate (msg/sec across all subscribers) = 7705<br>

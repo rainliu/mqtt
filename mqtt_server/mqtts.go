@@ -29,14 +29,15 @@ func main() {
 		return
 	}
 	tlsc = nil
+	tracer:= mqtt.TraceOn(os.Stdout) //mqtt.TraceOff()//TraceOff used for Performance Test
 
 	stack := mqtt.GetStack()
-	provider := stack.CreateProvider()
+	provider := stack.CreateProvider(tracer)
 
 	transport := stack.CreateTransport(network, address, port, tlsc)
 	provider.AddTransport(transport)
 
-	listener := newListener(provider)
+	listener := newListener(provider, tracer)
 	provider.AddListener(listener)
 
 	stack.Run()

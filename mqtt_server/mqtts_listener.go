@@ -1,22 +1,23 @@
 package main
 
 import (
-	"log"
 	"mqtt"
 )
 
 type mqtts_listener struct {
 	provider mqtt.Provider
+	tracer mqtt.Tracer
 
 	retainedMessages map[string]mqtt.Message
 }
 
-func newListener(provider mqtt.Provider) *mqtts_listener {
+func newListener(provider mqtt.Provider, tracer mqtt.Tracer) *mqtts_listener {
 	return &mqtts_listener{provider: provider,
+		tracer: tracer,
 		retainedMessages: make(map[string]mqtt.Message)}
 }
 func (this *mqtts_listener) ProcessConnect(eventConnect mqtt.EventConnect) {
-	log.Println("Received CONNECT")
+	this.tracer.Println("Received CONNECT")
 	s := eventConnect.GetSession()
 
 	pktconnack := mqtt.NewPacketConnack()
@@ -26,7 +27,7 @@ func (this *mqtts_listener) ProcessConnect(eventConnect mqtt.EventConnect) {
 	s.AcknowledgeConnect(pktconnack)
 }
 func (this *mqtts_listener) ProcessPublish(eventPublish mqtt.EventPublish) {
-	log.Printf("Received Publish with DUP %v QoS %v RETAIN %v Topic: %v Content: %v\n",
+	this.tracer.Printf("Received Publish with DUP %v QoS %v RETAIN %v Topic: %v Content: %v\n",
 		eventPublish.GetMessage().GetDup(),
 		eventPublish.GetMessage().GetQos(),
 		eventPublish.GetMessage().GetRetain(),
@@ -48,7 +49,7 @@ func (this *mqtts_listener) ProcessPublish(eventPublish mqtt.EventPublish) {
 	}
 }
 func (this *mqtts_listener) ProcessSubscribe(eventSubscribe mqtt.EventSubscribe) {
-	log.Printf("Received SUBSCRIBE with %v", eventSubscribe.GetSubscribeTopics())
+	this.tracer.Printf("Received SUBSCRIBE with %v", eventSubscribe.GetSubscribeTopics())
 	s := eventSubscribe.GetSession()
 
 	pktsuback := mqtt.NewPacketSuback()
@@ -72,18 +73,18 @@ func (this *mqtts_listener) ProcessSubscribe(eventSubscribe mqtt.EventSubscribe)
 	}
 }
 func (this *mqtts_listener) ProcessUnsubscribe(eventUnsubscribe mqtt.EventUnsubscribe) {
-	log.Printf("Received UNSUBSCRIBE with %v", eventUnsubscribe.GetUnsubscribeTopics())
+	this.tracer.Printf("Received UNSUBSCRIBE with %v", eventUnsubscribe.GetUnsubscribeTopics())
 }
 
 func (this *mqtts_listener) ProcessTimeout(eventTimeout mqtt.EventTimeout) {
-	log.Println("Received Timeout")
+	this.tracer.Println("Received Timeout")
 }
 func (this *mqtts_listener) ProcessIOException(eventIOException mqtt.EventIOException) {
-	log.Println("Received IOException")
+	this.tracer.Println("Received IOException")
 }
 func (this *mqtts_listener) ProcessSessionTerminated(eventSessionTerminated mqtt.EventSessionTerminated) {
 	if eventSessionTerminated.GetWillMessage() != nil {
-		log.Printf("Session Terminated with Reason: %s with WillMessage: DUP %v QoS %v RETAIN %v Topic: %v Content: %v\n",
+		this.tracer.Printf("Session Terminated with Reason: %s with WillMessage: DUP %v QoS %v RETAIN %v Topic: %v Content: %v\n",
 			eventSessionTerminated.GetReason(),
 			eventSessionTerminated.GetWillMessage().GetDup(),
 			eventSessionTerminated.GetWillMessage().GetQos(),
@@ -93,6 +94,6 @@ func (this *mqtts_listener) ProcessSessionTerminated(eventSessionTerminated mqtt
 
 		this.provider.Forward(eventSessionTerminated.GetWillMessage())
 	} else {
-		log.Println("Session Terminated with Reason: ", eventSessionTerminated.GetReason(), "without WillMessage!")
+		this.tracer.Println("Session Terminated with Reason: ", eventSessionTerminated.GetReason(), "without WillMessage!")
 	}
 }

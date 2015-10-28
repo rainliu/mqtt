@@ -11,7 +11,7 @@ type Stack interface {
 	GetTransports() []Transport
 	DeleteTransport(t Transport)
 
-	CreateProvider() Provider
+	CreateProvider(tracer Tracer) Provider
 	GetProviders() []Provider
 	DeleteProvider(p Provider)
 
@@ -68,8 +68,8 @@ func (this *stack) DeleteTransport(t Transport) {
 	delete(this.transports, t)
 }
 
-func (this *stack) CreateProvider() Provider {
-	p := newProvider()
+func (this *stack) CreateProvider(tracer Tracer) Provider {
+	p := newProvider(tracer)
 
 	this.providers[p] = p
 
